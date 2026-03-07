@@ -1,37 +1,38 @@
-const axios = require('axios');
-const { createClient } = require('@supabase/supabase-js');
+const axios = require("axios");
+const { createClient } = require("@supabase/supabase-js");
 
 // Initialize Supabase client
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
 // PayMongo API configuration
-const PAYMONGO_API_BASE_URL = 'https://api.paymongo.com/v1';
+const PAYMONGO_API_BASE_URL = "https://api.paymongo.com/v1";
 
 exports.handler = async (event) => {
   try {
-    const { amount, description, userId, userEmail, successUrl, cancelUrl } = JSON.parse(event.body);
+    const { amount, description, userId, userEmail, successUrl, cancelUrl } =
+      JSON.parse(event.body);
 
     if (!amount || !description || !userId || !userEmail) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'Missing required parameters' }),
+        body: JSON.stringify({ error: "Missing required parameters" }),
       };
     }
 
     // Get or create PayMongo customer
     let customerId;
-    
-    // First, try to get existing customer from your database
+
+    // First, try to get existing customer from Supabase
     const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('paymongo_customer_id')
-      .eq('id', userId)
+      .from("users")
+      .select("paymongo_customer_id")
+      .eq("id", userId)
       .single();
 
-    if (userError && userError.code !== 'PGRST116') {
+    if (userError && userError.code !== "PGRST116") {
       throw userError;
     }
 
@@ -53,19 +54,19 @@ exports.handler = async (event) => {
         },
         {
           headers: {
-            'Authorization': `Basic ${Buffer.from(process.env.PAYMONGO_SECRET_KEY + ':').toString('base64')}`,
-            'Content-Type': 'application/json',
+            Authorization: `Basic ${Buffer.from(process.env.PAYMONGO_SECRET_KEY + ":").toString("base64")}`,
+            "Content-Type": "application/json",
           },
-        }
+        },
       );
-      
+
       customerId = customerResponse.data.data.id;
-      
+
       // Update user with PayMongo customer ID
       await supabase
-        .from('users')
+        .from("users")
         .update({ paymongo_customer_id: customerId })
-        .eq('id', userId);
+        .eq("id", userId);
     }
 
     // Create checkout session
@@ -77,12 +78,12 @@ exports.handler = async (event) => {
             send_billing_receipt: true,
             show_description: true,
             show_line_items: true,
-            payment_method_types: ['gcash', 'paymaya', 'card', 'bank_transfer'],
+            payment_method_types: ["gcash", "paymaya", "card", "bank_transfer"],
             line_items: [
               {
                 name: description,
                 amount: amount * 100, // PayMongo uses amount in cents
-                currency: 'PHP',
+                currency: "PHP",
                 quantity: 1,
               },
             ],
@@ -98,10 +99,10 @@ exports.handler = async (event) => {
       },
       {
         headers: {
-          'Authorization': `Basic ${Buffer.from(process.env.PAYMONGO_SECRET_KEY + ':').toString('base64')}`,
-          'Content-Type': 'application/json',
+          Authorization: `Basic ${Buffer.from(process.env.PAYMONGO_SECRET_KEY + ":").toString("base64")}`,
+          "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     const checkout = checkoutResponse.data.data;
@@ -115,11 +116,11 @@ exports.handler = async (event) => {
       }),
     };
   } catch (error) {
-    console.error('Error creating PayMongo checkout:', error);
+    console.error("Error creating PayMongo checkout:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ 
-        error: 'Internal server error',
+      body: JSON.stringify({
+        error: "Internal server error",
         message: error.message,
       }),
     };
