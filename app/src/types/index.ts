@@ -5,19 +5,32 @@ export interface User {
   createdAt: string;
   lastLogin: string;
   isPremium: boolean;
+  stripeCustomerId?: string;
+  subscriptionStatus?:
+    | "active"
+    | "canceled"
+    | "past_due"
+    | "incomplete"
+    | "incomplete_expired"
+    | "trialing"
+    | "unpaid"
+    | null;
+  planType?: "free" | "premium";
+  subscriptionId?: string;
+  subscriptionEndDate?: string;
 }
 
 export interface UploadedFile {
   id: string;
   userId: string;
   fileName: string;
-  fileType: 'pdf' | 'docx' | 'pptx' | 'xlsx';
+  fileType: "pdf" | "docx" | "pptx" | "xlsx";
   fileSize: number;
   extractedText: string;
   uploadDate: string;
 }
 
-export type QuizType = 'quiz' | 'mock-exam' | 'full-exam' | 'lesson-review';
+export type QuizType = "quiz" | "mock-exam" | "full-exam" | "lesson-review";
 
 export interface Quiz {
   id: string;
@@ -35,7 +48,7 @@ export interface Question {
   question: string;
   options: string[];
   correctAnswer: number;
-  questionType: 'definition' | 'fill-blank' | 'keyword' | 'multiple-choice';
+  questionType: "definition" | "fill-blank" | "keyword" | "multiple-choice";
   explanation?: string;
 }
 
@@ -68,7 +81,19 @@ export interface UserAnalytics {
   averageScore: number;
 }
 
-export type View = 'home' | 'dashboard' | 'upload' | 'quiz' | 'exam' | 'results' | 'review' | 'login' | 'register' | 'admin';
+export type View =
+  | "home"
+  | "dashboard"
+  | "upload"
+  | "quiz"
+  | "exam"
+  | "results"
+  | "review"
+  | "login"
+  | "register"
+  | "admin"
+  | "pricing"
+  | "subscription";
 
 export interface AppState {
   currentView: View;
@@ -76,4 +101,49 @@ export interface AppState {
   currentQuiz: Quiz | null;
   currentQuestions: Question[];
   currentResult: QuizResult | null;
+}
+
+// Subscription types
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: number;
+  interval: "month" | "year";
+  stripePriceId: string;
+  features: string[];
+  limits: {
+    quizzesPerDay: number;
+    fileUploads: number;
+    maxFileSize: number; // in MB
+    features: string[];
+  };
+}
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  planId: string;
+  status:
+    | "active"
+    | "canceled"
+    | "past_due"
+    | "incomplete"
+    | "incomplete_expired"
+    | "trialing"
+    | "unpaid";
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  stripeSubscriptionId: string;
+  stripeCustomerId: string;
+  cancelAtPeriodEnd: boolean;
+}
+
+export interface UsageLimits {
+  quizzesToday: number;
+  filesUploaded: number;
+  quizzesPerDayLimit: number;
+  fileUploadsLimit: number;
+  maxFileSizeLimit: number;
+  canUploadMore: boolean;
+  canCreateMoreQuizzes: boolean;
 }
