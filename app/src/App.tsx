@@ -22,7 +22,7 @@ import Admin from "@/sections/Admin";
 import Footer from "@/sections/Footer";
 
 // Assets
-import Logo from "@/assets/Logo.png";
+import Logo from "../assets/Logo.png";
 
 import "./App.css";
 

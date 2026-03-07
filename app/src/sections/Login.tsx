@@ -16,7 +16,7 @@ import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 // Assets
-import Logo from "@/assets/Logo.png";
+import Logo from "../assets/Logo.png";
 
 interface LoginProps {
   onNavigate: (view: View) => void;

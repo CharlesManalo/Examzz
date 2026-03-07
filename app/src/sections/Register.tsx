@@ -24,7 +24,7 @@ import {
 import { toast } from "sonner";
 
 // Assets
-import Logo from "@/assets/Logo.png";
+import Logo from "../assets/Logo.png";
 
 interface RegisterProps {
   onNavigate: (view: View) => void;
