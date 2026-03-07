@@ -1,13 +1,23 @@
-import type { View, User } from '@/types';
-import { Button } from '@/components/ui/button';
+import type { View, User } from "@/types";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { BookOpen, Menu, User as UserIcon, LogOut, LayoutDashboard, Upload, BarChart3 } from 'lucide-react';
+} from "@/components/ui/dropdown-menu";
+import {
+  Menu,
+  User as UserIcon,
+  LogOut,
+  LayoutDashboard,
+  Upload,
+  BarChart3,
+} from "lucide-react";
+
+// Assets
+import Logo from "@/assets/Logo.png";
 
 interface NavbarProps {
   currentView: View;
@@ -17,21 +27,27 @@ interface NavbarProps {
   user: User | null;
 }
 
-const Navbar = ({ currentView, onNavigate, isAuthenticated, onLogout, user }: NavbarProps) => {
+const Navbar = ({
+  currentView,
+  onNavigate,
+  isAuthenticated,
+  onLogout,
+  user,
+}: NavbarProps) => {
   const isActive = (view: View) => currentView === view;
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
-        <div 
+        <div
           className="flex items-center gap-2 cursor-pointer"
-          onClick={() => onNavigate(isAuthenticated ? 'dashboard' : 'home')}
+          onClick={() => onNavigate(isAuthenticated ? "dashboard" : "home")}
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600">
-            <BookOpen className="h-5 w-5 text-white" />
+            <img src={Logo} alt="Examzz" className="h-5 w-5 rounded-lg" />
           </div>
           <span className="text-xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-            StudyQuiz Pro
+            Examzz
           </span>
         </div>
 
@@ -39,25 +55,27 @@ const Navbar = ({ currentView, onNavigate, isAuthenticated, onLogout, user }: Na
           {isAuthenticated ? (
             <>
               <button
-                onClick={() => onNavigate('dashboard')}
+                onClick={() => onNavigate("dashboard")}
                 className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive('dashboard') ? 'text-primary' : 'text-muted-foreground'
+                  isActive("dashboard")
+                    ? "text-primary"
+                    : "text-muted-foreground"
                 }`}
               >
                 Dashboard
               </button>
               <button
-                onClick={() => onNavigate('upload')}
+                onClick={() => onNavigate("upload")}
                 className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive('upload') ? 'text-primary' : 'text-muted-foreground'
+                  isActive("upload") ? "text-primary" : "text-muted-foreground"
                 }`}
               >
                 Upload
               </button>
               <button
-                onClick={() => onNavigate('dashboard')}
+                onClick={() => onNavigate("dashboard")}
                 className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive('quiz') ? 'text-primary' : 'text-muted-foreground'
+                  isActive("quiz") ? "text-primary" : "text-muted-foreground"
                 }`}
               >
                 My Quizzes
@@ -66,17 +84,17 @@ const Navbar = ({ currentView, onNavigate, isAuthenticated, onLogout, user }: Na
           ) : (
             <>
               <button
-                onClick={() => onNavigate('home')}
+                onClick={() => onNavigate("home")}
                 className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive('home') ? 'text-primary' : 'text-muted-foreground'
+                  isActive("home") ? "text-primary" : "text-muted-foreground"
                 }`}
               >
                 Home
               </button>
               <button
-                onClick={() => onNavigate('login')}
+                onClick={() => onNavigate("login")}
                 className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive('login') ? 'text-primary' : 'text-muted-foreground'
+                  isActive("login") ? "text-primary" : "text-muted-foreground"
                 }`}
               >
                 Login
@@ -89,7 +107,10 @@ const Navbar = ({ currentView, onNavigate, isAuthenticated, onLogout, user }: Na
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Button
+                  variant="ghost"
+                  className="relative h-10 w-10 rounded-full"
+                >
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-violet-100 to-indigo-100">
                     <UserIcon className="h-5 w-5 text-violet-600" />
                   </div>
@@ -100,25 +121,25 @@ const Navbar = ({ currentView, onNavigate, isAuthenticated, onLogout, user }: Na
                   <div className="flex flex-col space-y-1 leading-none">
                     <p className="font-medium">{user?.email}</p>
                     <p className="text-xs text-muted-foreground">
-                      {user?.isPremium ? 'Premium Member' : 'Free Plan'}
+                      {user?.isPremium ? "Premium Member" : "Free Plan"}
                     </p>
                   </div>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onNavigate('dashboard')}>
+                <DropdownMenuItem onClick={() => onNavigate("dashboard")}>
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   Dashboard
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onNavigate('upload')}>
+                <DropdownMenuItem onClick={() => onNavigate("upload")}>
                   <Upload className="mr-2 h-4 w-4" />
                   Upload Files
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onNavigate('dashboard')}>
+                <DropdownMenuItem onClick={() => onNavigate("dashboard")}>
                   <BarChart3 className="mr-2 h-4 w-4" />
                   Progress
                 </DropdownMenuItem>
-                {user?.email === 'admin@studyquiz.com' && (
-                  <DropdownMenuItem onClick={() => onNavigate('admin')}>
+                {user?.email === "admin@studyquiz.com" && (
+                  <DropdownMenuItem onClick={() => onNavigate("admin")}>
                     <BarChart3 className="mr-2 h-4 w-4" />
                     Admin Panel
                   </DropdownMenuItem>
@@ -132,11 +153,11 @@ const Navbar = ({ currentView, onNavigate, isAuthenticated, onLogout, user }: Na
             </DropdownMenu>
           ) : (
             <div className="hidden md:flex items-center gap-2">
-              <Button variant="ghost" onClick={() => onNavigate('login')}>
+              <Button variant="ghost" onClick={() => onNavigate("login")}>
                 Sign In
               </Button>
-              <Button 
-                onClick={() => onNavigate('register')}
+              <Button
+                onClick={() => onNavigate("register")}
                 className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
               >
                 Get Started
@@ -153,10 +174,10 @@ const Navbar = ({ currentView, onNavigate, isAuthenticated, onLogout, user }: Na
             <DropdownMenuContent align="end" className="md:hidden">
               {isAuthenticated ? (
                 <>
-                  <DropdownMenuItem onClick={() => onNavigate('dashboard')}>
+                  <DropdownMenuItem onClick={() => onNavigate("dashboard")}>
                     Dashboard
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onNavigate('upload')}>
+                  <DropdownMenuItem onClick={() => onNavigate("upload")}>
                     Upload
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={onLogout} className="text-red-600">
@@ -165,13 +186,13 @@ const Navbar = ({ currentView, onNavigate, isAuthenticated, onLogout, user }: Na
                 </>
               ) : (
                 <>
-                  <DropdownMenuItem onClick={() => onNavigate('home')}>
+                  <DropdownMenuItem onClick={() => onNavigate("home")}>
                     Home
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onNavigate('login')}>
+                  <DropdownMenuItem onClick={() => onNavigate("login")}>
                     Sign In
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onNavigate('register')}>
+                  <DropdownMenuItem onClick={() => onNavigate("register")}>
                     Get Started
                   </DropdownMenuItem>
                 </>

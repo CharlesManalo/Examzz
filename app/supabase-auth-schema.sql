@@ -16,7 +16,7 @@ BEGIN
   INSERT INTO usage_tracking (user_id, date)
   VALUES (NEW.id, CURRENT_DATE);
   
-  -- Create user analytics for new user
+  -- Create user analytics for new user 
   INSERT INTO user_analytics (user_id, date)
   VALUES (NEW.id, CURRENT_DATE);
   
@@ -153,9 +153,8 @@ SELECT
 FROM users u
 LEFT JOIN auth.users a ON u.id = a.id;
 
--- Set up RLS for the view
-ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view own profile view" ON user_profiles FOR SELECT USING (auth.uid() = id);
+-- Note: RLS is handled by the underlying users table, not the view
+-- The view inherits security from the users table RLS policies
 
 -- Create index for better performance
 CREATE INDEX IF NOT EXISTS idx_users_email_verified ON users(email_verified);

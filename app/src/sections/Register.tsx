@@ -19,10 +19,12 @@ import {
   Lock,
   User as UserIcon,
   ArrowRight,
-  BookOpen,
   CheckCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+
+// Assets
+import Logo from "@/assets/Logo.png";
 
 interface RegisterProps {
   onNavigate: (view: View) => void;
@@ -117,10 +119,10 @@ const Register = ({ onNavigate, onRegister }: RegisterProps) => {
               onClick={() => onNavigate("home")}
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600">
-                <BookOpen className="h-6 w-6 text-white" />
+                <img src={Logo} alt="Examzz" className="h-6 w-6 rounded-lg" />
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                StudyQuiz Pro
+                Examzz
               </span>
             </div>
 

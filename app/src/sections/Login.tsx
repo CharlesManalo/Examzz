@@ -12,8 +12,11 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signIn, resetPassword, signInWithGoogle } from "@/services/auth";
-import { Eye, EyeOff, Mail, Lock, ArrowRight, BookOpen } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+
+// Assets
+import Logo from "@/assets/Logo.png";
 
 interface LoginProps {
   onNavigate: (view: View) => void;
@@ -91,10 +94,10 @@ const Login = ({ onNavigate, onLogin }: LoginProps) => {
           onClick={() => onNavigate("home")}
         >
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600">
-            <BookOpen className="h-6 w-6 text-white" />
+            <img src={Logo} alt="Examzz" className="h-6 w-6 rounded-lg" />
           </div>
-          <span className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent ml-3">
-            StudyQuiz Pro
+          <span className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+            Examzz
           </span>
         </div>
 

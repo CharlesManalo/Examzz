@@ -21,6 +21,9 @@ import Review from "@/sections/Review";
 import Admin from "@/sections/Admin";
 import Footer from "@/sections/Footer";
 
+// Assets
+import Logo from "@/assets/Logo.png";
+
 import "./App.css";
 
 function App() {
@@ -110,7 +113,11 @@ function App() {
     if (isLoading) {
       return (
         <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <img
+            src={Logo}
+            alt="Examzz"
+            className="h-12 w-12 rounded-xl shadow-lg"
+          />
         </div>
       );
     }

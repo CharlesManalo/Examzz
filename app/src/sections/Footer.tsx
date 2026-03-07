@@ -1,5 +1,8 @@
-import type { View } from '@/types';
-import { BookOpen, Mail, Twitter, Github, Linkedin } from 'lucide-react';
+import type { View } from "@/types";
+import { Mail, Twitter, Github, Linkedin } from "lucide-react";
+
+// Assets
+import Logo from "@/assets/Logo.png";
 
 interface FooterProps {
   onNavigate: (view: View) => void;
@@ -10,24 +13,24 @@ const Footer = ({ onNavigate }: FooterProps) => {
 
   const footerLinks = {
     Product: [
-      { label: 'Features', action: () => onNavigate('home') },
-      { label: 'Pricing', action: () => {} },
-      { label: 'API', action: () => {} },
+      { label: "Features", action: () => onNavigate("home") },
+      { label: "Pricing", action: () => {} },
+      { label: "API", action: () => {} },
     ],
     Company: [
-      { label: 'About', action: () => {} },
-      { label: 'Blog', action: () => {} },
-      { label: 'Careers', action: () => {} },
+      { label: "About", action: () => {} },
+      { label: "Blog", action: () => {} },
+      { label: "Careers", action: () => {} },
     ],
     Resources: [
-      { label: 'Documentation', action: () => {} },
-      { label: 'Help Center', action: () => {} },
-      { label: 'Contact', action: () => {} },
+      { label: "Documentation", action: () => {} },
+      { label: "Help Center", action: () => {} },
+      { label: "Contact", action: () => {} },
     ],
     Legal: [
-      { label: 'Privacy', action: () => {} },
-      { label: 'Terms', action: () => {} },
-      { label: 'Cookie Policy', action: () => {} },
+      { label: "Privacy", action: () => {} },
+      { label: "Terms", action: () => {} },
+      { label: "Cookie Policy", action: () => {} },
     ],
   };
 
@@ -36,32 +39,44 @@ const Footer = ({ onNavigate }: FooterProps) => {
       <div className="container py-12">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-8">
           <div className="col-span-2">
-            <div 
+            <div
               className="flex items-center gap-2 mb-4 cursor-pointer"
-              onClick={() => onNavigate('home')}
+              onClick={() => onNavigate("home")}
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600">
-                <BookOpen className="h-5 w-5 text-white" />
+                <img src={Logo} alt="Examzz" className="h-5 w-5 rounded-lg" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                StudyQuiz Pro
+                Examzz
               </span>
             </div>
             <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-              Transform your study materials into interactive quizzes and exams. 
+              Transform your study materials into interactive quizzes and exams.
               Learn smarter, not harder.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+              <a
+                href="#"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
                 <Twitter className="h-5 w-5" />
               </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+              <a
+                href="#"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
                 <Github className="h-5 w-5" />
               </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+              <a
+                href="#"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
                 <Linkedin className="h-5 w-5" />
               </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+              <a
+                href="#"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
                 <Mail className="h-5 w-5" />
               </a>
             </div>
