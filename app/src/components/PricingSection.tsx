@@ -1,31 +1,38 @@
-import React from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Check, Star, Crown } from 'lucide-react';
-import { useSubscription } from '@/contexts/SubscriptionContext';
-import { subscriptionPlans } from '@/services/stripe';
-import { toast } from 'sonner';
+import React from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Check, Star, Crown } from "lucide-react";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import { subscriptionPlans } from "@/services/paymongo";
+import { toast } from "sonner";
 
 const PricingCard: React.FC<{
-  plan: typeof subscriptionPlans[0];
+  plan: (typeof subscriptionPlans)[0];
   isCurrentPlan?: boolean;
   isPopular?: boolean;
 }> = ({ plan, isCurrentPlan, isPopular }) => {
   const { upgradeToPremium, isLoading } = useSubscription();
 
   const handleUpgrade = async () => {
-    if (plan.stripePriceId) {
-      try {
-        await upgradeToPremium(plan.stripePriceId);
-      } catch (error) {
-        toast.error('Failed to start upgrade process');
-      }
+    try {
+      await upgradeToPremium();
+    } catch (error) {
+      toast.error("Failed to start upgrade process");
     }
   };
 
   return (
-    <Card className={`relative ${isPopular ? 'border-primary shadow-lg scale-105' : ''}`}>
+    <Card
+      className={`relative ${isPopular ? "border-primary shadow-lg scale-105" : ""}`}
+    >
       {isPopular && (
         <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
           <Badge className="bg-primary text-primary-foreground">
@@ -34,10 +41,10 @@ const PricingCard: React.FC<{
           </Badge>
         </div>
       )}
-      
+
       <CardHeader className="text-center">
         <div className="flex justify-center mb-4">
-          {plan.id === 'premium' ? (
+          {plan.id === "premium" ? (
             <Crown className="w-12 h-12 text-primary" />
           ) : (
             <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -45,15 +52,19 @@ const PricingCard: React.FC<{
             </div>
           )}
         </div>
-        
+
         <CardTitle className="text-xl">{plan.name}</CardTitle>
         <CardDescription>
-          {plan.id === 'free' ? 'Perfect for getting started' : 'For serious learners'}
+          {plan.id === "free"
+            ? "Perfect for getting started"
+            : "For serious learners"}
         </CardDescription>
-        
+
         <div className="mt-4">
           <span className="text-4xl font-bold">${plan.price}</span>
-          {plan.price > 0 && <span className="text-muted-foreground">/{plan.interval}</span>}
+          {plan.price > 0 && (
+            <span className="text-muted-foreground">/{plan.interval}</span>
+          )}
         </div>
       </CardHeader>
 
@@ -78,12 +89,12 @@ const PricingCard: React.FC<{
             Free Plan
           </Button>
         ) : (
-          <Button 
-            className="w-full" 
+          <Button
+            className="w-full"
             onClick={handleUpgrade}
             disabled={isLoading}
           >
-            {isLoading ? 'Processing...' : `Upgrade to ${plan.name}`}
+            {isLoading ? "Processing..." : `Upgrade to ${plan.name}`}
           </Button>
         )}
       </CardFooter>
@@ -99,7 +110,8 @@ const PricingSection: React.FC = () => {
       <div className="text-center mb-12">
         <h2 className="text-3xl font-bold mb-4">Choose Your Plan</h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Select the perfect plan for your learning journey. Upgrade anytime to unlock more features.
+          Select the perfect plan for your learning journey. Upgrade anytime to
+          unlock more features.
         </p>
       </div>
 
@@ -109,17 +121,18 @@ const PricingSection: React.FC = () => {
             key={plan.id}
             plan={plan}
             isCurrentPlan={
-              (plan.id === 'free' && !isPremium) || 
-              (plan.id === 'premium' && isPremium)
+              (plan.id === "free" && !isPremium) ||
+              (plan.id === "premium" && isPremium)
             }
-            isPopular={plan.id === 'premium'}
+            isPopular={plan.id === "premium"}
           />
         ))}
       </div>
 
       <div className="text-center mt-12">
         <p className="text-sm text-muted-foreground">
-          All plans include core quiz features. Cancel premium subscription anytime.
+          All plans include core quiz features. Cancel premium subscription
+          anytime.
         </p>
       </div>
     </div>

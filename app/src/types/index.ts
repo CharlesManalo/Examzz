@@ -6,6 +6,7 @@ export interface User {
   lastLogin: string;
   isPremium: boolean;
   stripeCustomerId?: string;
+  paymongoCustomerId?: string;
   subscriptionStatus?:
     | "active"
     | "canceled"

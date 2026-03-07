@@ -266,7 +266,7 @@ export const clearDatabase = () => {
 export const updateUserSubscription = (
   userId: string,
   subscriptionData: {
-    stripeCustomerId?: string;
+    paymongoCustomerId?: string;
     subscriptionStatus?:
       | "active"
       | "canceled"
@@ -286,11 +286,11 @@ export const updateUserSubscription = (
 
 export const getUserSubscription = (userId: string): Subscription | null => {
   const user = getUserById(userId);
-  if (!user || !user.stripeCustomerId) {
+  if (!user || !user.paymongoCustomerId) {
     return null;
   }
 
-  // In a real app, this would fetch from Stripe
+  // In a real app, this would fetch from PayMongo
   // For now, return a mock subscription based on user data
   if (user.subscriptionStatus === "active" && user.subscriptionId) {
     return {
@@ -303,7 +303,7 @@ export const getUserSubscription = (userId: string): Subscription | null => {
         user.subscriptionEndDate ||
         new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       stripeSubscriptionId: user.subscriptionId,
-      stripeCustomerId: user.stripeCustomerId,
+      stripeCustomerId: user.paymongoCustomerId,
       cancelAtPeriodEnd: false,
     };
   }

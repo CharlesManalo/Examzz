@@ -23,9 +23,7 @@ const UpgradeButton: React.FC<UpgradeButtonProps> = ({
 
   const handleUpgrade = async () => {
     try {
-      // Get the premium plan price ID
-      const premiumPlan = "price_1Hh1234567890abcdef"; // This should match your Stripe price ID
-      await upgradeToPremium(premiumPlan);
+      await upgradeToPremium();
     } catch (error) {
       toast.error("Failed to start upgrade process");
     }

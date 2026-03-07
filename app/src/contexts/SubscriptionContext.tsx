@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import type { User, Subscription, UsageLimits } from "@/types";
-import { stripeService } from "@/services/stripe";
+import { paymongoService, subscriptionPlans } from "@/services/paymongo";
 
 interface SubscriptionContextType {
   user: User | null;
@@ -9,7 +9,7 @@ interface SubscriptionContextType {
   usageLimits: UsageLimits;
   isLoading: boolean;
   isPremium: boolean;
-  upgradeToPremium: (priceId: string) => Promise<void>;
+  upgradeToPremium: () => Promise<void>;
   manageSubscription: () => Promise<void>;
   cancelSubscription: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
@@ -42,7 +42,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  const isPremium = stripeService.isSubscriptionActive(user);
+  const isPremium = paymongoService.isSubscriptionActive(user);
 
   // Fetch subscription status when user changes
   useEffect(() => {
@@ -55,7 +55,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
   }, [user]);
 
   const updateUsageLimits = () => {
-    const limits = stripeService.getSubscriptionLimits(user);
+    const limits = paymongoService.getSubscriptionLimits(user);
     const todayUsage = getTodayUsage(); // This would come from your database/localStorage
 
     setUsageLimits({
@@ -102,7 +102,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
 
     setIsLoading(true);
     try {
-      const sub = await stripeService.getSubscriptionStatus(user.id);
+      const sub = await paymongoService.getSubscriptionStatus(user.id);
       setSubscription(sub);
       updateUsageLimits();
     } catch (error) {
@@ -112,13 +112,14 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
     }
   };
 
-  const upgradeToPremium = async (priceId: string) => {
+  const upgradeToPremium = async () => {
     if (!user) throw new Error("User not authenticated");
 
     setIsLoading(true);
     try {
-      await stripeService.createCheckoutSession({
-        priceId,
+      await paymongoService.createCheckout({
+        amount: 95, // 95 PHP
+        description: "Premium Plan - ₱95/month",
         userId: user.id,
         userEmail: user.email,
         successUrl: `${window.location.origin}/subscription?success=true`,
@@ -133,22 +134,9 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
   };
 
   const manageSubscription = async () => {
-    if (!user?.stripeCustomerId) throw new Error("No Stripe customer ID found");
-
-    setIsLoading(true);
-    try {
-      const portalUrl = await stripeService.createCustomerPortalSession({
-        customerId: user.stripeCustomerId,
-        returnUrl: `${window.location.origin}/subscription`,
-      });
-
-      window.location.href = portalUrl;
-    } catch (error) {
-      console.error("Failed to create customer portal session:", error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
+    // PayMongo doesn't have a customer portal like Stripe
+    // Redirect to subscription management page
+    window.location.href = "/subscription";
   };
 
   const cancelSubscription = async () => {
@@ -156,7 +144,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
 
     setIsLoading(true);
     try {
-      await stripeService.cancelSubscription(subscription.stripeSubscriptionId);
+      await paymongoService.cancelSubscription(subscription.id);
       await refreshSubscription();
     } catch (error) {
       console.error("Failed to cancel subscription:", error);
