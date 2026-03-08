@@ -33,6 +33,13 @@ export interface UploadedFile {
 
 export type QuizType = "quiz" | "mock-exam" | "full-exam" | "lesson-review";
 
+export interface ExtractedContent {
+  text: string;
+  headings: string[];
+  keywords: string[];
+  sentences: string[];
+}
+
 export interface Quiz {
   id: string;
   userId: string;

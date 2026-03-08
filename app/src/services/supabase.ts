@@ -371,7 +371,9 @@ export const createQuestions = async (
       questions.map((q) => ({
         quiz_id: q.quizId,
         question: q.question,
-        options: q.options,
+        options: Array.isArray(q.options)
+          ? q.options
+          : JSON.parse(q.options || "[]"),
         correct_answer: q.correctAnswer,
         question_type: q.questionType,
         explanation: q.explanation,

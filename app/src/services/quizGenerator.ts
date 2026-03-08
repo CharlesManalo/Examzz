@@ -232,13 +232,13 @@ const generateMultipleChoiceQuestions = (
         const allKeywords = content.keywords.filter(
           (k) => k !== questionWord.toLowerCase(),
         );
-        const distractors = shuffleArray(allKeywords)?.slice(0, 3);
+        const distractors = shuffleArray(allKeywords)?.slice(0, 3) as string[];
 
         if (!distractors || distractors.length !== 3) return;
 
         questions.push({
           question: `Which of the following best relates to "${topic}"?`,
-          options: shuffleArray([questionWord, ...distractors]),
+          options: shuffleArray([questionWord, ...distractors]) as string[],
           correctAnswer: 0,
           questionType: "multiple-choice",
           explanation: `Context from the text: "${sentence}"`,
@@ -401,7 +401,18 @@ const isCommonWord = (word: string): boolean => {
   return commonWords.includes(word.toLowerCase());
 };
 
-const shuffleArray = <T>(array: T[]): T[] => {
+const shuffleArray = <T>(array: T[] | string): T[] => {
+  // Guard against non-array inputs (e.g., JSON strings)
+  if (!Array.isArray(array)) {
+    try {
+      const parsed = JSON.parse(array as string);
+      if (!Array.isArray(parsed)) return [];
+      array = parsed;
+    } catch {
+      return [];
+    }
+  }
+
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
