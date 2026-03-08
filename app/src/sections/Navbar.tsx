@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 // Assets
-import Logo from "../../assets/Logo.png";
+import Logo from "../assets/Logo.png";
 
 interface NavbarProps {
   currentView: View;
