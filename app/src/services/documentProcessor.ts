@@ -2,9 +2,6 @@ import mammoth from "mammoth";
 import * as XLSX from "xlsx";
 import * as pdfjsLib from "pdfjs-dist";
 
-// Disable worker for now to avoid configuration issues
-pdfjsLib.GlobalWorkerOptions.workerSrc = "";
-
 export interface ExtractedContent {
   text: string;
   headings: string[];
@@ -47,11 +44,13 @@ export const processDocument = async (
 
 const extractPDFText = async (file: File): Promise<string> => {
   try {
-    console.log("Starting PDF extraction for file:", file.name);
+    // Set worker inline, right before use
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+    console.log("pdfjs version:", pdfjsLib.version);
+
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    console.log("PDF loaded, pages:", pdf.numPages);
-
     let text = "";
 
     for (let i = 1; i <= pdf.numPages; i++) {
@@ -61,16 +60,14 @@ const extractPDFText = async (file: File): Promise<string> => {
       text += pageText + "\n";
     }
 
-    console.log("PDF extraction completed, text length:", text.length);
     return text;
   } catch (error) {
-    console.error("PDF extraction error details:", error);
-    console.error("PDF file info:", {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-    });
-    return ""; // Return empty string on error to prevent crashes
+    console.error(
+      "PDF extraction error details:",
+      JSON.stringify(error),
+      error,
+    );
+    throw new Error("Failed to extract PDF text");
   }
 };
 
