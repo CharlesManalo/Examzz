@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "./supabase";
 import type {
   User,
   UploadedFile,
@@ -8,23 +8,6 @@ import type {
   UserAnalytics,
   Subscription,
 } from "@/types";
-
-// Supabase client configuration
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-export const supabase =
-  !supabaseUrl || !supabaseAnonKey
-    ? (() => {
-        console.warn(
-          "Missing Supabase environment variables. Please set up your Supabase project.",
-        );
-        return createClient(
-          "https://placeholder.supabase.co",
-          "placeholder-anon-key",
-        );
-      })()
-    : createClient(supabaseUrl, supabaseAnonKey);
 
 // Database types based on Supabase schema
 interface DatabaseUser {
@@ -171,7 +154,7 @@ export const signUp = async (
 
   // User profile is created automatically by the sync_user_profile trigger
   // Just return the mapped user data
-  return mapAuthUserToAppUser(authData.user);
+  return mapAuthUserToAppUser(authData.user, null);
 };
 
 export const signIn = async (
