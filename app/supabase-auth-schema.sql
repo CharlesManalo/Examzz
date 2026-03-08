@@ -36,11 +36,11 @@ RETURNS TRIGGER AS $$
 BEGIN
   -- Insert or update user profile when auth user changes
   INSERT INTO users (id, email, email_verified, created_at, updated_at)
-  VALUES (NEW.id, NEW.email, NEW.email_confirmed, NEW.created_at, NEW.updated_at)
+  VALUES (NEW.id, NEW.email, NEW.email_confirmed_at IS NOT NULL, NEW.created_at, NEW.updated_at)
   ON CONFLICT (id) 
   DO UPDATE SET 
     email = NEW.email,
-    email_verified = NEW.email_confirmed,
+    email_verified = NEW.email_confirmed_at IS NOT NULL,
     updated_at = NEW.updated_at;
   
   RETURN NEW;

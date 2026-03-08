@@ -169,26 +169,9 @@ export const signUp = async (
   if (authError) throw authError;
   if (!authData.user) throw new Error("Failed to create user");
 
-  // Create user profile in our users table
-  const { data: dbUser, error: dbError } = await supabase
-    .from("users")
-    .insert({
-      id: authData.user.id,
-      email: authData.user.email,
-      is_premium: false,
-      subscription_status: "free",
-      plan_type: "free",
-    })
-    .select()
-    .single();
-
-  if (dbError) {
-    // Rollback auth user if profile creation fails
-    await supabase.auth.admin.deleteUser(authData.user.id);
-    throw dbError;
-  }
-
-  return mapAuthUserToAppUser(authData.user, dbUser);
+  // User profile is created automatically by the sync_user_profile trigger
+  // Just return the mapped user data
+  return mapAuthUserToAppUser(authData.user, null);
 };
 
 export const signIn = async (
