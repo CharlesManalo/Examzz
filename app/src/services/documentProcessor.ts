@@ -140,18 +140,39 @@ const analyzeContent = (text: string): ExtractedContent => {
 const extractSentences = (text: string): string[] => {
   const sentences: string[] = [];
 
-  // Split on newlines AND on sentence-ending punctuation
-  const chunks = text.split(/\n|(?<=[.!?])\s+/);
+  // Split on newlines first
+  const lines = text.split("\n");
 
-  chunks.forEach((chunk) => {
-    const trimmed = chunk.trim();
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
 
-    // If chunk is still too long, split further on punctuation
-    if (trimmed.length > 500) {
-      const subSentences = trimmed.match(/[^.!?]{20,499}[.!?]/g) || [];
-      subSentences.forEach((s) => sentences.push(s.trim()));
-    } else if (trimmed.length > 20) {
+    // If line is short enough, use directly
+    if (trimmed.length > 20 && trimmed.length <= 500) {
       sentences.push(trimmed);
+      return;
+    }
+
+    // If line is too long, split on sentence-ending punctuation manually
+    if (trimmed.length > 500) {
+      // No lookbehind — split then rejoin punctuation
+      const parts = trimmed.split(/([.!?]+\s+)/);
+      let current = "";
+
+      parts.forEach((part) => {
+        current += part;
+        if (/[.!?]\s*$/.test(current) && current.trim().length > 20) {
+          if (current.trim().length <= 500) {
+            sentences.push(current.trim());
+          }
+          current = "";
+        }
+      });
+
+      // Push any remainder
+      if (current.trim().length > 20 && current.trim().length <= 500) {
+        sentences.push(current.trim());
+      }
     }
   });
 
