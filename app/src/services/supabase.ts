@@ -355,7 +355,7 @@ export const deleteQuiz = async (id: string): Promise<boolean> => {
   return !error;
 };
 
-// Question management functions
+// Question management functions - Fixed options guard for b.slice error
 export const createQuestions = async (
   questions: Omit<Question, "id">[],
 ): Promise<Question[]> => {
