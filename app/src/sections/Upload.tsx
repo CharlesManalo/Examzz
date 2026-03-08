@@ -7,16 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   processDocument,
+  generateQuizFromContent,
   isValidFileType,
-  isValidFileSize,
   formatFileSize,
   getFileTypeLabel,
 } from "@/services/documentProcessor";
-import {
-  generateQuiz,
-  getQuizTitle,
-  getRecommendedQuestionCount,
-} from "@/services/quizGenerator";
+import { getQuizTitle } from "@/services/quizGenerator";
 import { createFile, createQuiz, createQuestions } from "@/services/database";
 import {
   UploadCloud,
@@ -249,7 +245,7 @@ const Upload = ({ user, onStartQuiz }: UploadProps) => {
       console.log("Question count requested:", questionCount);
       console.log("Quiz type:", selectedQuizType);
 
-      const questions = generateQuiz(content, {
+      const questions = await generateQuizFromContent(content, {
         questionCount,
         quizType: selectedQuizType,
       });

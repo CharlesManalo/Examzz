@@ -1,226 +1,80 @@
-import mammoth from "mammoth";
-import * as XLSX from "xlsx";
-import * as pdfjsLib from "pdfjs-dist";
+import type { ExtractedContent, Question, QuizType } from "@/types";
 
-export interface ExtractedContent {
-  text: string;
-  headings: string[];
-  keywords: string[];
-  sentences: string[];
-}
+// API endpoints
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.VITE_APP_URL?.replace(/\/$/, "") ||
+    "https://examzz.vercel.app") + "/api";
 
+// Process document via Python API
 export const processDocument = async (
   file: File,
 ): Promise<ExtractedContent> => {
-  const fileType = file.name.split(".").pop()?.toLowerCase();
+  const formData = new FormData();
+  formData.append("file", file);
 
-  let text = "";
-
-  switch (fileType) {
-    case "txt":
-      text = await file.text();
-      break;
-    case "pdf":
-      text = await extractPDFText(file);
-      break;
-    case "docx":
-    case "doc":
-      text = await extractWordText(file);
-      break;
-    case "pptx":
-    case "ppt":
-      text = await extractPowerPointText(file);
-      break;
-    case "xlsx":
-    case "xls":
-      text = await extractExcelText(file);
-      break;
-    default:
-      throw new Error(`Unsupported file type: ${fileType}`);
-  }
-
-  return analyzeContent(text);
-};
-
-const extractPDFText = async (file: File): Promise<string> => {
   try {
-    // Set worker inline, right before use
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    const response = await fetch(`${API_BASE_URL}/process-document`, {
+      method: "POST",
+      body: formData,
+    });
 
-    console.log("pdfjs version:", pdfjsLib.version);
-
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let text = "";
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const pageText = content.items.map((item: any) => item.str).join(" ");
-      text += pageText + "\n";
+    if (!response.ok) {
+      throw new Error(`Document processing failed: ${response.statusText}`);
     }
 
-    console.log("PDF extraction completed, text length:", text.length);
-    console.log("newline count:", (text.match(/\n/g) || []).length);
-    return text;
+    const data = await response.json();
+    return data;
   } catch (error) {
-    console.error(
-      "PDF extraction error details:",
-      JSON.stringify(error),
-      error,
-    );
-    throw new Error("Failed to extract PDF text");
+    console.error("Document processing error:", error);
+    throw error;
   }
 };
 
-const extractWordText = async (file: File): Promise<string> => {
-  const arrayBuffer = await file.arrayBuffer();
-  const result = await mammoth.extractRawText({ arrayBuffer });
-  return result.value || "";
-};
-
-const extractPowerPointText = async (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const text = await file.text();
-        resolve(cleanExtractedText(text));
-      } catch {
-        reject(new Error("Failed to extract PowerPoint text"));
-      }
-    };
-    reader.onerror = () => reject(new Error("Failed to read PowerPoint file"));
-    reader.readAsText(file);
-  });
-};
-
-const extractExcelText = async (file: File): Promise<string> => {
-  const arrayBuffer = await file.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, { type: "array" });
-
-  let text = "";
-  workbook.SheetNames.forEach((sheetName) => {
-    const worksheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-    jsonData.forEach((row: unknown) => {
-      if (Array.isArray(row)) {
-        text += row.join(" ") + "\n";
-      }
+// Generate quiz via Python API
+export const generateQuizFromContent = async (
+  content: ExtractedContent,
+  options: {
+    questionCount?: number;
+    quizType?: QuizType;
+  } = {},
+): Promise<Question[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/generate-quiz`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        content,
+        questionCount: options.questionCount || 10,
+        quizType: options.quizType || "quiz",
+      }),
     });
-  });
 
-  return text;
-};
-
-const cleanExtractedText = (text: string): string => {
-  return text
-    .replace(/[^\x20-\x7E\n\r\t]/g, " ")
-    .replace(/[ \t]+/g, " ") // only collapse spaces/tabs, NOT newlines
-    .replace(/\n{3,}/g, "\n\n") // max 2 consecutive newlines
-    .trim();
-};
-
-const analyzeContent = (text: string): ExtractedContent => {
-  const cleanedText = cleanExtractedText(text);
-
-  const sentences = extractSentences(cleanedText);
-  const headings = extractHeadings(cleanedText);
-  const keywords = extractKeywords(cleanedText, headings);
-
-  return {
-    text: cleanedText,
-    headings,
-    keywords,
-    sentences,
-  };
-};
-
-const extractSentences = (text: string): string[] => {
-  const sentences: string[] = [];
-
-  // Split on newlines first
-  const lines = text.split("\n");
-
-  lines.forEach((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-
-    // If line is short enough, use directly
-    if (trimmed.length > 20 && trimmed.length <= 500) {
-      sentences.push(trimmed);
-      return;
+    if (!response.ok) {
+      throw new Error(`Quiz generation failed: ${response.statusText}`);
     }
 
-    // If line is too long, split on sentence-ending punctuation manually
-    if (trimmed.length > 500) {
-      // No lookbehind — split then rejoin punctuation
-      const parts = trimmed.split(/([.!?]+\s+)/);
-      let current = "";
+    const data = await response.json();
 
-      parts.forEach((part) => {
-        current += part;
-        if (/[.!?]\s*$/.test(current) && current.trim().length > 20) {
-          if (current.trim().length <= 500) {
-            sentences.push(current.trim());
-          }
-          current = "";
-        }
-      });
-
-      // Push any remainder
-      if (current.trim().length > 20 && current.trim().length <= 500) {
-        sentences.push(current.trim());
-      }
-    }
-  });
-
-  return [...new Set(sentences)];
+    // Convert API response to frontend Question format
+    return data.questions.map((q: any, index: number) => ({
+      id: `generated-${index}`,
+      quizId: "temp-quiz",
+      question: q.question,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      questionType: q.questionType as any,
+      explanation: q.explanation,
+    }));
+  } catch (error) {
+    console.error("Quiz generation error:", error);
+    throw error;
+  }
 };
 
-const extractHeadings = (text: string): string[] => {
-  const lines = text.split("\n");
-  const headings: string[] = [];
-
-  lines.forEach((line) => {
-    const trimmed = line.trim();
-    if (
-      trimmed.length > 5 &&
-      trimmed.length < 100 &&
-      (trimmed === trimmed.toUpperCase() ||
-        (trimmed[0] === trimmed[0].toUpperCase() && !trimmed.match(/[.!?]$/)))
-    ) {
-      headings.push(trimmed);
-    }
-  });
-
-  return [...new Set(headings)].slice(0, 20);
-};
-
-const extractKeywords = (text: string, headings: string[]): string[] => {
-  const keywords = new Set<string>();
-
-  headings.forEach((h) => {
-    const words = h.split(/\s+/).filter((w) => w.length > 3);
-    words.forEach((w) => keywords.add(w.toLowerCase()));
-  });
-
-  const wordFreq: Record<string, number> = {};
-  const words = text.match(/\b[A-Z][a-z]{3,}\b/g) || [];
-
-  words.forEach((word) => {
-    const lower = word.toLowerCase();
-    wordFreq[lower] = (wordFreq[lower] || 0) + 1;
-  });
-
-  Object.entries(wordFreq)
-    .filter(([_, count]) => count > 2)
-    .forEach(([word]) => keywords.add(word));
-
-  return Array.from(keywords).slice(0, 30);
-};
-
+// Helper functions for file validation
 export const isValidFileType = (file: File): boolean => {
   const validTypes = ["pdf", "docx", "doc", "pptx", "ppt", "xlsx", "xls"];
   const extension = file.name.split(".").pop()?.toLowerCase();
