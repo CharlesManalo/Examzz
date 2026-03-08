@@ -1,5 +1,9 @@
 import mammoth from "mammoth";
 import * as XLSX from "xlsx";
+import * as pdfjsLib from "pdfjs-dist";
+
+// Set PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 export interface ExtractedContent {
   text: string;
@@ -42,19 +46,23 @@ export const processDocument = async (
 };
 
 const extractPDFText = async (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const text = await file.text();
-        resolve(cleanExtractedText(text));
-      } catch {
-        reject(new Error("Failed to extract PDF text"));
-      }
-    };
-    reader.onerror = () => reject(new Error("Failed to read PDF file"));
-    reader.readAsText(file);
-  });
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = "";
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items.map((item: any) => item.str).join(" ");
+      text += pageText + "\n";
+    }
+
+    return text;
+  } catch (error) {
+    console.error("PDF extraction error:", error);
+    return "";
+  }
 };
 
 const extractWordText = async (file: File): Promise<string> => {
@@ -123,11 +131,27 @@ const analyzeContent = (text: string): ExtractedContent => {
 };
 
 const extractSentences = (text: string): string[] => {
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 20 && l.length < 300);
   const sentenceRegex = /[^.!?]+[.!?]+/g;
-  const matches = text.match(sentenceRegex) || [];
-  return matches
-    .map((s) => s.trim())
-    .filter((s) => s.length > 20 && s.length < 300);
+  const sentences: string[] = [];
+
+  lines.forEach((line) => {
+    const matches = line.match(sentenceRegex);
+    if (matches) {
+      sentences.push(
+        ...matches
+          .map((s) => s.trim())
+          .filter((s) => s.length > 20 && s.length < 300),
+      );
+    } else if (line.length > 20 && line.length < 300) {
+      sentences.push(line); // treat as whole line as a sentence
+    }
+  });
+
+  return sentences;
 };
 
 const extractHeadings = (text: string): string[] => {
