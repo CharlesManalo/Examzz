@@ -171,7 +171,7 @@ export const signUp = async (
 
   // User profile is created automatically by the sync_user_profile trigger
   // Just return the mapped user data
-  return mapAuthUserToAppUser(authData.user, null);
+  return mapAuthUserToAppUser(authData.user);
 };
 
 export const signIn = async (
