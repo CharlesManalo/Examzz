@@ -114,10 +114,9 @@ const extractExcelText = async (file: File): Promise<string> => {
 
 const cleanExtractedText = (text: string): string => {
   return text
-    .replace(/[^\x20-\x7E\n\r\t]/g, "") // Remove non-printable except newlines
-    .replace(/[ \t]+/g, " ") // Collapse spaces/tabs
-    .replace(/\n{3,}/g, "\n\n") // Max 2 consecutive newlines
-    .replace(/\n{2}/g, "\n") // Max 1 consecutive newline
+    .replace(/[^\x20-\x7E\n\r\t]/g, " ")
+    .replace(/[ \t]+/g, " ") // only collapse spaces/tabs, NOT newlines
+    .replace(/\n{3,}/g, "\n\n") // max 2 consecutive newlines
     .trim();
 };
 
@@ -137,27 +136,29 @@ const analyzeContent = (text: string): ExtractedContent => {
 };
 
 const extractSentences = (text: string): string[] => {
+  const sentences: string[] = [];
+
+  // Split by newlines first
   const lines = text
     .split("\n")
     .map((l) => l.trim())
-    .filter((l) => l.length > 20 && l.length < 300);
-  const sentenceRegex = /[^.!?]+[.!?]+/g;
-  const sentences: string[] = [];
+    .filter((l) => l.length > 20 && l.length < 500);
 
   lines.forEach((line) => {
-    const matches = line.match(sentenceRegex);
+    // Try to extract proper sentences first
+    const matches = line.match(/[^.!?]+[.!?]+/g);
     if (matches) {
-      sentences.push(
-        ...matches
-          .map((s) => s.trim())
-          .filter((s) => s.length > 20 && s.length < 300),
-      );
-    } else if (line.length > 20 && line.length < 300) {
-      sentences.push(line); // treat as whole line as a sentence
+      matches
+        .map((s) => s.trim())
+        .filter((s) => s.length > 20 && s.length < 500)
+        .forEach((s) => sentences.push(s));
+    } else if (line.length > 20 && line.length < 500) {
+      // Treat whole line as a sentence (handles quiz questions, bullet points etc.)
+      sentences.push(line);
     }
   });
 
-  return sentences;
+  return [...new Set(sentences)]; // deduplicate
 };
 
 const extractHeadings = (text: string): string[] => {
