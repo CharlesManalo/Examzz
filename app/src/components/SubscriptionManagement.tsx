@@ -70,8 +70,10 @@ const SubscriptionManagement: React.FC = () => {
                 <Crown className="w-5 h-5 text-primary" />
                 <CardTitle>Premium Plan</CardTitle>
                 <Badge variant="default" className="bg-green-500">
-                  {subscription.status.charAt(0).toUpperCase() +
-                    subscription.status.slice(1)}
+                  {subscription.status
+                    ? subscription.status.charAt(0).toUpperCase() +
+                      subscription.status.slice(1)
+                    : "Unknown"}
                 </Badge>
               </div>
               <Button
@@ -97,7 +99,10 @@ const SubscriptionManagement: React.FC = () => {
               <div className="flex items-center space-x-2">
                 <CreditCard className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm">
-                  ID: {subscription.stripeSubscriptionId.slice(-8)}
+                  ID:{" "}
+                  {subscription.stripeSubscriptionId
+                    ? subscription.stripeSubscriptionId.slice(-8)
+                    : "N/A"}
                 </span>
               </div>
             </div>
