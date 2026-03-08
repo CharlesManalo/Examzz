@@ -2,8 +2,8 @@ import mammoth from "mammoth";
 import * as XLSX from "xlsx";
 import * as pdfjsLib from "pdfjs-dist";
 
-// Set PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+// Disable worker for now to avoid configuration issues
+pdfjsLib.GlobalWorkerOptions.workerSrc = "";
 
 export interface ExtractedContent {
   text: string;
@@ -47,8 +47,11 @@ export const processDocument = async (
 
 const extractPDFText = async (file: File): Promise<string> => {
   try {
+    console.log("Starting PDF extraction for file:", file.name);
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    console.log("PDF loaded, pages:", pdf.numPages);
+
     let text = "";
 
     for (let i = 1; i <= pdf.numPages; i++) {
@@ -58,10 +61,16 @@ const extractPDFText = async (file: File): Promise<string> => {
       text += pageText + "\n";
     }
 
+    console.log("PDF extraction completed, text length:", text.length);
     return text;
   } catch (error) {
-    console.error("PDF extraction error:", error);
-    return "";
+    console.error("PDF extraction error details:", error);
+    console.error("PDF file info:", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
+    return ""; // Return empty string on error to prevent crashes
   }
 };
 
