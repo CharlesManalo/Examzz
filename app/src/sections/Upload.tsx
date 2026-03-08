@@ -230,7 +230,9 @@ const Upload = ({ user, onStartQuiz }: UploadProps) => {
       const mockFile = new File([combinedText], "combined.txt", {
         type: "text/plain",
       });
-      const content = await processDocument(mockFile);
+
+      // Skip reprocessing txt files to prevent crash
+      const content = { text: combinedText };
 
       console.log("Processed content:", content);
       console.log("Content text length:", content?.text?.length || 0);
