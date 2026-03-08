@@ -60,6 +60,8 @@ const extractPDFText = async (file: File): Promise<string> => {
       text += pageText + "\n";
     }
 
+    console.log("PDF extraction completed, text length:", text.length);
+    console.log("newline count:", (text.match(/\n/g) || []).length);
     return text;
   } catch (error) {
     console.error(
@@ -138,27 +140,22 @@ const analyzeContent = (text: string): ExtractedContent => {
 const extractSentences = (text: string): string[] => {
   const sentences: string[] = [];
 
-  // Split by newlines first
-  const lines = text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 20 && l.length < 500);
+  // Split on newlines AND on sentence-ending punctuation
+  const chunks = text.split(/\n|(?<=[.!?])\s+/);
 
-  lines.forEach((line) => {
-    // Try to extract proper sentences first
-    const matches = line.match(/[^.!?]+[.!?]+/g);
-    if (matches) {
-      matches
-        .map((s) => s.trim())
-        .filter((s) => s.length > 20 && s.length < 500)
-        .forEach((s) => sentences.push(s));
-    } else if (line.length > 20 && line.length < 500) {
-      // Treat whole line as a sentence (handles quiz questions, bullet points etc.)
-      sentences.push(line);
+  chunks.forEach((chunk) => {
+    const trimmed = chunk.trim();
+
+    // If chunk is still too long, split further on punctuation
+    if (trimmed.length > 500) {
+      const subSentences = trimmed.match(/[^.!?]{20,499}[.!?]/g) || [];
+      subSentences.forEach((s) => sentences.push(s.trim()));
+    } else if (trimmed.length > 20) {
+      sentences.push(trimmed);
     }
   });
 
-  return [...new Set(sentences)]; // deduplicate
+  return [...new Set(sentences)];
 };
 
 const extractHeadings = (text: string): string[] => {
