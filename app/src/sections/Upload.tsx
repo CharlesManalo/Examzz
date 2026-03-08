@@ -216,6 +216,9 @@ const Upload = ({ user, onStartQuiz }: UploadProps) => {
         .map((f) => f.extractedText)
         .join("\n\n");
 
+      console.log("Combined text length:", combinedText.length);
+      console.log("Combined text preview:", combinedText.substring(0, 200));
+
       if (!combinedText || combinedText.trim().length < 50) {
         toast.error("Not enough content to generate questions", {
           description: "Please upload files with more text content",
@@ -228,6 +231,11 @@ const Upload = ({ user, onStartQuiz }: UploadProps) => {
         type: "text/plain",
       });
       const content = await processDocument(mockFile);
+
+      console.log("Processed content:", content);
+      console.log("Content text length:", content?.text?.length || 0);
+      console.log("Content sentences count:", content?.sentences?.length || 0);
+      console.log("Content keywords count:", content?.keywords?.length || 0);
 
       if (!content || !content.text || content.text.trim().length < 50) {
         toast.error("Could not process document content", {
