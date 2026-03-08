@@ -1,25 +1,34 @@
-import { createClient } from '@supabase/supabase-js';
-import bcrypt from 'bcryptjs';
-import type { 
-  User, 
-  UploadedFile, 
-  Quiz, 
-  Question, 
-  QuizResult, 
+import { createClient } from "@supabase/supabase-js";
+import bcrypt from "bcryptjs";
+import type {
+  User,
+  UploadedFile,
+  Quiz,
+  Question,
+  QuizResult,
   UserAnalytics,
   Subscription,
-  UsageLimits
-} from '@/types';
+  UsageLimits,
+} from "@/types";
 
 // Supabase client configuration
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Check if environment variables are set - show warning instead of crashing
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+  console.warn(
+    "⚠️ Missing Supabase environment variables!\n" +
+      "Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file or Netlify dashboard.\n" +
+      "The app will continue but authentication may not work properly.",
+  );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Create client only if we have the required values, otherwise use placeholder
+export const supabase =
+  supabaseUrl && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : createClient("https://placeholder.supabase.co", "placeholder-key");
 
 // Database types based on Supabase schema
 interface DatabaseUser {
@@ -104,7 +113,7 @@ interface DatabaseUsageTracking {
 const mapDatabaseUser = (dbUser: DatabaseUser): User => ({
   id: dbUser.id,
   email: dbUser.email,
-  password: '', // Never return password hash
+  password: "", // Never return password hash
   createdAt: dbUser.created_at,
   lastLogin: dbUser.last_login || dbUser.created_at,
   isPremium: dbUser.is_premium,
@@ -121,7 +130,7 @@ const mapDatabaseFile = (dbFile: DatabaseUploadedFile): UploadedFile => ({
   fileName: dbFile.file_name,
   fileType: dbFile.file_type as any,
   fileSize: dbFile.file_size,
-  extractedText: dbFile.extracted_text || '',
+  extractedText: dbFile.extracted_text || "",
   uploadDate: dbFile.upload_date,
 });
 
@@ -158,13 +167,16 @@ const mapDatabaseResult = (dbResult: DatabaseQuizResult): QuizResult => ({
 });
 
 // Authentication functions
-export const signUp = async (email: string, password: string): Promise<User> => {
+export const signUp = async (
+  email: string,
+  password: string,
+): Promise<User> => {
   // Hash password
   const passwordHash = await bcrypt.hash(password, 12);
-  
+
   // Create user in Supabase
   const { data, error } = await supabase
-    .from('users')
+    .from("users")
     .insert({
       email,
       password_hash: passwordHash,
@@ -173,94 +185,108 @@ export const signUp = async (email: string, password: string): Promise<User> => 
     .single();
 
   if (error) throw error;
-  
+
   return mapDatabaseUser(data);
 };
 
-export const signIn = async (email: string, password: string): Promise<User> => {
+export const signIn = async (
+  email: string,
+  password: string,
+): Promise<User> => {
   // Get user by email
   const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', email)
+    .from("users")
+    .select("*")
+    .eq("email", email)
     .single();
 
   if (error || !data) {
-    throw new Error('User not found');
+    throw new Error("User not found");
   }
 
   // Verify password
   const isValid = await bcrypt.compare(password, data.password_hash);
   if (!isValid) {
-    throw new Error('Invalid password');
+    throw new Error("Invalid password");
   }
 
   // Update last login
   await supabase
-    .from('users')
+    .from("users")
     .update({ last_login: new Date().toISOString() })
-    .eq('id', data.id);
+    .eq("id", data.id);
 
   return mapDatabaseUser(data);
 };
 
 export const getCurrentUser = async (): Promise<User | null> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) return null;
-  
+
   // Get user data from users table
   const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
+    .from("users")
+    .select("*")
+    .eq("id", user.id)
     .single();
 
   if (error || !data) return null;
-  
+
   return mapDatabaseUser(data);
 };
 
 // User management functions
-export const updateUser = async (id: string, updates: Partial<User>): Promise<User | null> => {
+export const updateUser = async (
+  id: string,
+  updates: Partial<User>,
+): Promise<User | null> => {
   // Convert User updates to database format
   const dbUpdates: Partial<DatabaseUser> = {};
-  
-  if (updates.paymongoCustomerId) dbUpdates.paymongo_customer_id = updates.paymongoCustomerId;
-  if (updates.subscriptionStatus) dbUpdates.subscription_status = updates.subscriptionStatus;
+
+  if (updates.paymongoCustomerId)
+    dbUpdates.paymongo_customer_id = updates.paymongoCustomerId;
+  if (updates.subscriptionStatus)
+    dbUpdates.subscription_status = updates.subscriptionStatus;
   if (updates.planType) dbUpdates.plan_type = updates.planType;
-  if (updates.subscriptionId) dbUpdates.subscription_id = updates.subscriptionId;
-  if (updates.subscriptionEndDate) dbUpdates.subscription_end_date = updates.subscriptionEndDate;
+  if (updates.subscriptionId)
+    dbUpdates.subscription_id = updates.subscriptionId;
+  if (updates.subscriptionEndDate)
+    dbUpdates.subscription_end_date = updates.subscriptionEndDate;
   if (updates.isPremium !== undefined) dbUpdates.is_premium = updates.isPremium;
-  
+
   const { data, error } = await supabase
-    .from('users')
+    .from("users")
     .update(dbUpdates)
-    .eq('id', id)
+    .eq("id", id)
     .select()
     .single();
 
   if (error) return null;
-  
+
   return mapDatabaseUser(data);
 };
 
 export const getUserByEmail = async (email: string): Promise<User | null> => {
   const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', email)
+    .from("users")
+    .select("*")
+    .eq("email", email)
     .single();
 
   if (error) return null;
-  
+
   return mapDatabaseUser(data);
 };
 
 // File management functions
-export const createFile = async (file: Omit<UploadedFile, 'id' | 'uploadDate'>): Promise<UploadedFile> => {
+export const createFile = async (
+  file: Omit<UploadedFile, "id" | "uploadDate">,
+): Promise<UploadedFile> => {
   const { data, error } = await supabase
-    .from('uploaded_files')
+    .from("uploaded_files")
     .insert({
       user_id: file.userId,
       file_name: file.fileName,
@@ -272,35 +298,36 @@ export const createFile = async (file: Omit<UploadedFile, 'id' | 'uploadDate'>):
     .single();
 
   if (error) throw error;
-  
+
   return mapDatabaseFile(data);
 };
 
-export const getFilesByUserId = async (userId: string): Promise<UploadedFile[]> => {
+export const getFilesByUserId = async (
+  userId: string,
+): Promise<UploadedFile[]> => {
   const { data, error } = await supabase
-    .from('uploaded_files')
-    .select('*')
-    .eq('user_id', userId)
-    .order('upload_date', { ascending: false });
+    .from("uploaded_files")
+    .select("*")
+    .eq("user_id", userId)
+    .order("upload_date", { ascending: false });
 
   if (error) throw error;
-  
+
   return data.map(mapDatabaseFile);
 };
 
 export const deleteFile = async (id: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from('uploaded_files')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase.from("uploaded_files").delete().eq("id", id);
 
   return !error;
 };
 
 // Quiz management functions
-export const createQuiz = async (quiz: Omit<Quiz, 'id' | 'createdAt'>): Promise<Quiz> => {
+export const createQuiz = async (
+  quiz: Omit<Quiz, "id" | "createdAt">,
+): Promise<Quiz> => {
   const { data, error } = await supabase
-    .from('quizzes')
+    .from("quizzes")
     .insert({
       user_id: quiz.userId,
       quiz_type: quiz.quizType,
@@ -312,68 +339,71 @@ export const createQuiz = async (quiz: Omit<Quiz, 'id' | 'createdAt'>): Promise<
     .single();
 
   if (error) throw error;
-  
+
   return mapDatabaseQuiz(data);
 };
 
 export const getQuizzesByUserId = async (userId: string): Promise<Quiz[]> => {
   const { data, error } = await supabase
-    .from('quizzes')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
+    .from("quizzes")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
 
   if (error) throw error;
-  
+
   return data.map(mapDatabaseQuiz);
 };
 
 export const deleteQuiz = async (id: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from('quizzes')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase.from("quizzes").delete().eq("id", id);
 
   return !error;
 };
 
 // Question management functions
-export const createQuestions = async (questions: Omit<Question, 'id'>[]): Promise<Question[]> => {
+export const createQuestions = async (
+  questions: Omit<Question, "id">[],
+): Promise<Question[]> => {
   const { data, error } = await supabase
-    .from('questions')
+    .from("questions")
     .insert(
-      questions.map(q => ({
+      questions.map((q) => ({
         quiz_id: q.quizId,
         question: q.question,
         options: q.options,
         correct_answer: q.correctAnswer,
         question_type: q.questionType,
         explanation: q.explanation,
-      }))
+      })),
     )
     .select();
 
   if (error) throw error;
-  
+
   return data.map(mapDatabaseQuestion);
 };
 
-export const getQuestionsByQuizId = async (quizId: string): Promise<Question[]> => {
+export const getQuestionsByQuizId = async (
+  quizId: string,
+): Promise<Question[]> => {
   const { data, error } = await supabase
-    .from('questions')
-    .select('*')
-    .eq('quiz_id', quizId)
-    .order('created_at', { ascending: true });
+    .from("questions")
+    .select("*")
+    .eq("quiz_id", quizId)
+    .order("created_at", { ascending: true });
 
   if (error) throw error;
-  
+
   return data.map(mapDatabaseQuestion);
 };
 
 // Quiz results functions
-export const createResult = async (result: Omit<QuizResult, 'id' | 'completedAt'>): Promise<QuizResult> => {
+export const createResult = async (
+  result: Omit<QuizResult, "id" | "completedAt">,
+): Promise<QuizResult> => {
   const { data, error } = await supabase
-    .from('quiz_results')
+    .from("quiz_results")
     .insert({
       user_id: result.userId,
       quiz_id: result.quizId,
@@ -388,51 +418,64 @@ export const createResult = async (result: Omit<QuizResult, 'id' | 'completedAt'
     .single();
 
   if (error) throw error;
-  
+
   return mapDatabaseResult(data);
 };
 
-export const getResultsByUserId = async (userId: string): Promise<QuizResult[]> => {
+export const getResultsByUserId = async (
+  userId: string,
+): Promise<QuizResult[]> => {
   const { data, error } = await supabase
-    .from('quiz_results')
-    .select('*')
-    .eq('user_id', userId)
-    .order('completed_at', { ascending: false });
+    .from("quiz_results")
+    .select("*")
+    .eq("user_id", userId)
+    .order("completed_at", { ascending: false });
 
   if (error) throw error;
-  
+
   return data.map(mapDatabaseResult);
 };
 
 // Usage tracking functions
-export const incrementUsage = async (userId: string, type: 'quiz' | 'file'): Promise<void> => {
-  const today = new Date().toISOString().split('T')[0];
-  
-  if (type === 'quiz') {
-    await supabase.rpc('increment_quiz_usage', { user_uuid: userId, date: today });
+export const incrementUsage = async (
+  userId: string,
+  type: "quiz" | "file",
+): Promise<void> => {
+  const today = new Date().toISOString().split("T")[0];
+
+  if (type === "quiz") {
+    await supabase.rpc("increment_quiz_usage", {
+      user_uuid: userId,
+      date: today,
+    });
   } else {
-    await supabase.rpc('increment_file_usage', { user_uuid: userId, date: today });
+    await supabase.rpc("increment_file_usage", {
+      user_uuid: userId,
+      date: today,
+    });
   }
 };
 
-export const getUserUsage = async (userId: string): Promise<{
+export const getUserUsage = async (
+  userId: string,
+): Promise<{
   quizzesToday: number;
   filesUploaded: number;
   date: string;
 }> => {
-  const today = new Date().toISOString().split('T')[0];
-  
+  const today = new Date().toISOString().split("T")[0];
+
   const { data, error } = await supabase
-    .from('usage_tracking')
-    .select('quizzes_today, files_uploaded_today, date')
-    .eq('user_id', userId)
-    .eq('date', today)
+    .from("usage_tracking")
+    .select("quizzes_today, files_uploaded_today, date")
+    .eq("user_id", userId)
+    .eq("date", today)
     .single();
 
   if (error || !data) {
     return { quizzesToday: 0, filesUploaded: 0, date: today };
   }
-  
+
   return {
     quizzesToday: data.quizzes_today,
     filesUploaded: data.files_uploaded_today,
@@ -440,35 +483,41 @@ export const getUserUsage = async (userId: string): Promise<{
   };
 };
 
-export const canCreateMoreQuizzes = async (userId: string): Promise<boolean> => {
-  const { data, error } = await supabase
-    .rpc('can_create_more_quizzes', { user_uuid: userId });
+export const canCreateMoreQuizzes = async (
+  userId: string,
+): Promise<boolean> => {
+  const { data, error } = await supabase.rpc("can_create_more_quizzes", {
+    user_uuid: userId,
+  });
 
   if (error) throw error;
-  
+
   return data;
 };
 
 export const canUploadMoreFiles = async (userId: string): Promise<boolean> => {
-  const { data, error } = await supabase
-    .rpc('can_upload_more_files', { user_uuid: userId });
+  const { data, error } = await supabase.rpc("can_upload_more_files", {
+    user_uuid: userId,
+  });
 
   if (error) throw error;
-  
+
   return data;
 };
 
 // Subscription functions
-export const getUserSubscription = async (userId: string): Promise<Subscription | null> => {
+export const getUserSubscription = async (
+  userId: string,
+): Promise<Subscription | null> => {
   const { data, error } = await supabase
-    .from('subscriptions')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('status', 'active')
+    .from("subscriptions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("status", "active")
     .single();
 
   if (error || !data) return null;
-  
+
   return {
     id: data.id,
     userId: data.user_id,
@@ -482,43 +531,51 @@ export const getUserSubscription = async (userId: string): Promise<Subscription 
   };
 };
 
-export const updateUserSubscription = async (userId: string, subscriptionData: {
-  paymongoCustomerId?: string;
-  subscriptionStatus?: string;
-  planType?: string;
-  subscriptionId?: string;
-  subscriptionEndDate?: string;
-}): Promise<User | null> => {
+export const updateUserSubscription = async (
+  userId: string,
+  subscriptionData: {
+    paymongoCustomerId?: string;
+    subscriptionStatus?: string;
+    planType?: string;
+    subscriptionId?: string;
+    subscriptionEndDate?: string;
+  },
+): Promise<User | null> => {
   return updateUser(userId, subscriptionData);
 };
 
 // Analytics functions
-export const getAnalytics = async (): Promise<UserAnalytics & { lastUpdated: string }> => {
-  const { data, error } = await supabase
-    .from('user_analytics')
-    .select('*');
+export const getAnalytics = async (): Promise<
+  UserAnalytics & { lastUpdated: string }
+> => {
+  const { data, error } = await supabase.from("user_analytics").select("*");
 
   if (error) throw error;
-  
+
   // Calculate totals from all user analytics
-  const totals = data.reduce((acc, row) => ({
-    totalUsers: acc.totalUsers + 1,
-    activeUsersToday: acc.activeUsersToday + (row.date === new Date().toISOString().split('T')[0] ? 1 : 0),
-    totalExams: acc.totalExams + row.quizzes_completed,
-    totalQuizzes: acc.totalQuizzes + row.quizzes_created,
-    filesUploaded: acc.filesUploaded + row.files_uploaded,
-    quizzesCompleted: acc.quizzes_completed,
-    averageScore: acc.averageScore + (row.average_score || 0),
-  }), {
-    totalUsers: 0,
-    activeUsersToday: 0,
-    totalExams: 0,
-    totalQuizzes: 0,
-    filesUploaded: 0,
-    quizzesCompleted: 0,
-    averageScore: 0,
-    lastUpdated: new Date().toISOString(),
-  });
+  const totals = data.reduce(
+    (acc, row) => ({
+      totalUsers: acc.totalUsers + 1,
+      activeUsersToday:
+        acc.activeUsersToday +
+        (row.date === new Date().toISOString().split("T")[0] ? 1 : 0),
+      totalExams: acc.totalExams + row.quizzes_completed,
+      totalQuizzes: acc.totalQuizzes + row.quizzes_created,
+      filesUploaded: acc.filesUploaded + row.files_uploaded,
+      quizzesCompleted: acc.quizzes_completed,
+      averageScore: acc.averageScore + (row.average_score || 0),
+    }),
+    {
+      totalUsers: 0,
+      activeUsersToday: 0,
+      totalExams: 0,
+      totalQuizzes: 0,
+      filesUploaded: 0,
+      quizzesCompleted: 0,
+      averageScore: 0,
+      lastUpdated: new Date().toISOString(),
+    },
+  );
 
   return totals;
 };
@@ -526,16 +583,16 @@ export const getAnalytics = async (): Promise<UserAnalytics & { lastUpdated: str
 // Session management
 export const setCurrentUser = (user: User | null): void => {
   if (user) {
-    localStorage.setItem('studyquiz_current_user', JSON.stringify(user));
+    localStorage.setItem("studyquiz_current_user", JSON.stringify(user));
   } else {
-    localStorage.removeItem('studyquiz_current_user');
+    localStorage.removeItem("studyquiz_current_user");
   }
 };
 
 // Legacy compatibility functions
 export const initDatabase = (): void => {
   // No initialization needed for Supabase
-  console.log('Supabase database initialized');
+  console.log("Supabase database initialized");
 };
 
 export const trackActiveUser = async (): Promise<void> => {
@@ -543,10 +600,10 @@ export const trackActiveUser = async (): Promise<void> => {
   if (user) {
     // Update last activity
     await supabase
-      .from('usage_tracking')
+      .from("usage_tracking")
       .update({ last_activity: new Date().toISOString() })
-      .eq('user_id', user.id)
-      .eq('date', new Date().toISOString().split('T')[0]);
+      .eq("user_id", user.id)
+      .eq("date", new Date().toISOString().split("T")[0]);
   }
 };
 
@@ -557,5 +614,5 @@ export const isAuthenticated = async (): Promise<boolean> => {
 
 export const clearDatabase = (): void => {
   // Not applicable for Supabase
-  console.warn('clearDatabase not applicable for Supabase');
+  console.warn("clearDatabase not applicable for Supabase");
 };

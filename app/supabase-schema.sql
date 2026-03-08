@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     last_login TIMESTAMP WITH TIME ZONE,
     is_premium BOOLEAN DEFAULT FALSE,
-    paymongo_customer_id VARCHAR(255),
+    paymongo_customer_id VARCHAR(255),  
     subscription_status VARCHAR(50) DEFAULT 'free',
     plan_type VARCHAR(20) DEFAULT 'free',
     subscription_id VARCHAR(255),

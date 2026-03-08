@@ -162,7 +162,7 @@ export const signUp = async (
     email,
     password,
     options: {
-      emailRedirectTo: `${window.location.origin}/login`,
+      emailRedirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/login`,
     },
   });
 
@@ -285,7 +285,7 @@ export const signOut = async (): Promise<void> => {
 
 export const resetPassword = async (email: string): Promise<void> => {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
+    redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/reset-password`,
   });
   if (error) throw error;
 };
@@ -302,24 +302,24 @@ export const signInWithGoogle = async (): Promise<void> => {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${window.location.origin}/dashboard`,
+      redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/dashboard`,
     },
   });
 
   if (error) throw error;
-  // This will redirect to Google OAuth, the user will be handled by the auth state change listener
+  // This will redirect to Google OAuth, user will be handled by the auth state change listener
 };
 
 export const signUpWithGoogle = async (): Promise<void> => {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${window.location.origin}/dashboard`,
+      redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/dashboard`,
     },
   });
 
   if (error) throw error;
-  // This will redirect to Google OAuth, the user will be handled by the auth state change listener
+  // This will redirect to Google OAuth, user will be handled by the auth state change listener
 };
 
 // Session management
