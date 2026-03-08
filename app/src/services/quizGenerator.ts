@@ -75,7 +75,13 @@ export const generateQuiz = (
   }
 
   const shuffled = shuffleArray(questions);
-  return shuffled ? shuffled.slice(0, opts.questionCount) : [];
+  console.log(
+    "DEBUG: shuffled type:",
+    typeof shuffled,
+    Array.isArray(shuffled),
+    shuffled,
+  );
+  return Array.isArray(shuffled) ? shuffled.slice(0, opts.questionCount) : [];
 };
 
 const generateDefinitionQuestions = (
@@ -232,13 +238,19 @@ const generateMultipleChoiceQuestions = (
         const allKeywords = content.keywords.filter(
           (k) => k !== questionWord.toLowerCase(),
         );
-        const distractors = shuffleArray(allKeywords)?.slice(0, 3) as string[];
+        const distractors = shuffleArray(allKeywords);
+        const slicedDistractors = Array.isArray(distractors)
+          ? distractors.slice(0, 3)
+          : [];
 
-        if (!distractors || distractors.length !== 3) return;
+        if (!slicedDistractors || slicedDistractors.length !== 3) return;
 
         questions.push({
           question: `Which of the following best relates to "${topic}"?`,
-          options: shuffleArray([questionWord, ...distractors]) as string[],
+          options: shuffleArray([
+            questionWord,
+            ...slicedDistractors,
+          ]) as string[],
           correctAnswer: 0,
           questionType: "multiple-choice",
           explanation: `Context from the text: "${sentence}"`,
@@ -282,9 +294,12 @@ const generateOptions = (
     });
   });
 
-  const shuffledDistractors = shuffleArray(distractors).slice(0, 3);
+  const shuffledDistractorsArray = shuffleArray(distractors);
+  const shuffledDistractors = Array.isArray(shuffledDistractorsArray)
+    ? shuffledDistractorsArray.slice(0, 3)
+    : [];
 
-  return shuffleArray([correctAnswer, ...(shuffledDistractors || [])]);
+  return shuffleArray([correctAnswer, ...shuffledDistractors]);
 };
 
 const isCommonWord = (word: string): boolean => {
@@ -402,6 +417,12 @@ const isCommonWord = (word: string): boolean => {
 };
 
 const shuffleArray = <T>(array: T[] | string): T[] => {
+  console.log(
+    "DEBUG shuffleArray input:",
+    typeof array,
+    Array.isArray(array),
+    array,
+  );
   // Guard against non-array inputs (e.g., JSON strings)
   if (!Array.isArray(array)) {
     try {
