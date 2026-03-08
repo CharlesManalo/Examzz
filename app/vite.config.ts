@@ -7,7 +7,7 @@ import { cssVariablesPlugin } from "./vite-plugin-css-variables.js";
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: "./",
+  base: "/",
   plugins: [inspectAttr(), react(), cssVariablesPlugin()],
   css: {
     devSourcemap: true,
