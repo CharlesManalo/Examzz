@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import bcrypt from "bcryptjs";
 import type {
   User,
   UploadedFile,
@@ -171,52 +170,47 @@ export const signUp = async (
   email: string,
   password: string,
 ): Promise<User> => {
-  // Hash password
-  const passwordHash = await bcrypt.hash(password, 12);
-
-  // Create user in Supabase
-  const { data, error } = await supabase
-    .from("users")
-    .insert({
-      email,
-      password_hash: passwordHash,
-    })
-    .select()
-    .single();
-
+  const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) throw error;
+  if (!data.user) throw new Error("Signup failed");
 
-  return mapDatabaseUser(data);
+  // Profile row is created automatically by your sync_user_profile trigger
+  return mapDatabaseUser({
+    id: data.user.id,
+    email: data.user.email!,
+    password_hash: "",
+    created_at: data.user.created_at,
+    updated_at: data.user.created_at,
+    last_login: null,
+    is_premium: false,
+    paymongo_customer_id: null,
+    subscription_status: "free",
+    plan_type: "free",
+    subscription_id: null,
+    subscription_end_date: null,
+    email_verified: false,
+  });
 };
 
 export const signIn = async (
   email: string,
   password: string,
 ): Promise<User> => {
-  // Get user by email
-  const { data, error } = await supabase
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (error) throw error;
+  if (!data.user) throw new Error("Sign in failed");
+
+  const { data: profile } = await supabase
     .from("users")
     .select("*")
-    .eq("email", email)
+    .eq("id", data.user.id)
     .single();
 
-  if (error || !data) {
-    throw new Error("User not found");
-  }
-
-  // Verify password
-  const isValid = await bcrypt.compare(password, data.password_hash);
-  if (!isValid) {
-    throw new Error("Invalid password");
-  }
-
-  // Update last login
-  await supabase
-    .from("users")
-    .update({ last_login: new Date().toISOString() })
-    .eq("id", data.id);
-
-  return mapDatabaseUser(data);
+  if (!profile) throw new Error("Profile not found");
+  return mapDatabaseUser(profile);
 };
 
 export const getCurrentUser = async (): Promise<User | null> => {
@@ -371,9 +365,17 @@ export const createQuestions = async (
       questions.map((q) => ({
         quiz_id: q.quizId,
         question: q.question,
-        options: Array.isArray(q.options)
-          ? q.options
-          : JSON.parse(q.options || "[]"),
+        options: (() => {
+          if (Array.isArray(q.options)) return q.options;
+          if (typeof q.options === "string") {
+            try {
+              return JSON.parse(q.options);
+            } catch {
+              return [];
+            }
+          }
+          return [];
+        })(),
         correct_answer: q.correctAnswer,
         question_type: q.questionType,
         explanation: q.explanation,
