@@ -1,8 +1,7 @@
 import type { View } from "@/types";
 import { Mail, Twitter, Github, Linkedin } from "lucide-react";
 
-// Assets
-import Logo from "../assets/Logo.png";
+// Assets - temporarily using text logo instead of image
 
 interface FooterProps {
   onNavigate: (view: View) => void;
@@ -44,7 +43,7 @@ const Footer = ({ onNavigate }: FooterProps) => {
               onClick={() => onNavigate("home")}
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600">
-                <img src={Logo} alt="Examzz" className="h-5 w-5 rounded-lg" />
+                <span className="text-white font-bold text-sm">E</span>
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
                 Examzz

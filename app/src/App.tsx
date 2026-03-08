@@ -21,8 +21,7 @@ import Review from "@/sections/Review";
 import Admin from "@/sections/Admin";
 import Footer from "@/sections/Footer";
 
-// Assets
-import Logo from "./assets/Logo.png";
+// Assets - temporarily using text logo instead of image
 
 import "./App.css";
 
@@ -113,11 +112,7 @@ function App() {
     if (isLoading) {
       return (
         <div className="min-h-screen flex items-center justify-center">
-          <img
-            src={Logo}
-            alt="Examzz"
-            className="h-12 w-12 rounded-xl shadow-lg"
-          />
+          <div className="text-3xl font-bold text-black">Examzz</div>
         </div>
       );
     }

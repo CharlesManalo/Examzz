@@ -723,8 +723,3 @@ export const isAuthenticated = async (): Promise<boolean> => {
   } = await supabase.auth.getSession();
   return !!session;
 };
-
-export const clearDatabase = (): void => {
-  // Not applicable for Supabase
-  console.warn("clearDatabase not applicable for Supabase");
-};
