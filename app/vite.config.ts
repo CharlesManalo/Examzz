@@ -13,7 +13,7 @@ export default defineConfig({
     devSourcemap: true,
   },
   build: {
-    minify: false,
+    minify: "esbuild",
   },
   resolve: {
     alias: {
