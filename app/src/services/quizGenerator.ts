@@ -75,7 +75,7 @@ export const generateQuiz = (
   }
 
   const shuffled = shuffleArray(questions);
-  return shuffled.slice(0, opts.questionCount);
+  return shuffled ? shuffled.slice(0, opts.questionCount) : [];
 };
 
 const generateDefinitionQuestions = (
@@ -139,7 +139,7 @@ const generateFillBlankQuestions = (
         .filter((k) => k.toLowerCase() !== wordToBlank.toLowerCase())
         .slice(0, 3);
 
-      if (distractors.length < 3) return;
+      if (!distractors || distractors.length < 3) return;
 
       const options = [wordToBlank, ...distractors];
 
@@ -184,6 +184,8 @@ const generateKeywordQuestions = (
         const otherKeywords = keywords
           .filter((k) => k !== correctKeyword)
           .slice(0, 3);
+
+        if (!otherKeywords || otherKeywords.length === 0) return;
 
         questions.push({
           question: `According to the text about "${heading}", which of the following is mentioned?`,
@@ -230,17 +232,17 @@ const generateMultipleChoiceQuestions = (
         const allKeywords = content.keywords.filter(
           (k) => k !== questionWord.toLowerCase(),
         );
-        const distractors = shuffleArray(allKeywords).slice(0, 3);
+        const distractors = shuffleArray(allKeywords)?.slice(0, 3);
 
-        if (distractors.length === 3) {
-          questions.push({
-            question: `Which of the following best relates to "${topic}"?`,
-            options: shuffleArray([questionWord, ...distractors]),
-            correctAnswer: 0,
-            questionType: "multiple-choice",
-            explanation: `Context from the text: "${sentence}"`,
-          });
-        }
+        if (!distractors || distractors.length !== 3) return;
+
+        questions.push({
+          question: `Which of the following best relates to "${topic}"?`,
+          options: shuffleArray([questionWord, ...distractors]),
+          correctAnswer: 0,
+          questionType: "multiple-choice",
+          explanation: `Context from the text: "${sentence}"`,
+        });
       }
     }
   });
@@ -282,7 +284,7 @@ const generateOptions = (
 
   const shuffledDistractors = shuffleArray(distractors).slice(0, 3);
 
-  return shuffleArray([correctAnswer, ...shuffledDistractors]);
+  return shuffleArray([correctAnswer, ...(shuffledDistractors || [])]);
 };
 
 const isCommonWord = (word: string): boolean => {
