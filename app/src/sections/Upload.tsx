@@ -9,10 +9,10 @@ import {
   processDocument,
   generateQuizFromContent,
   isValidFileType,
+  isValidFileSize,
   formatFileSize,
   getFileTypeLabel,
 } from "@/services/documentProcessor";
-import { getQuizTitle } from "@/services/quizGenerator";
 import { createFile, createQuiz, createQuestions } from "@/services/database";
 import {
   UploadCloud,
@@ -27,6 +27,101 @@ import {
   Loader2,
   ChevronRight,
 } from "lucide-react";
+
+// Quiz configuration constants
+const QUIZ_TITLES: Record<string, string> = {
+  quiz: "Quick Quiz",
+  "mock-exam": "Mock Exam",
+  "full-exam": "Full Exam",
+  "lesson-review": "Lesson Review",
+};
+
+const QUIZ_QUESTION_COUNTS: Record<string, number> = {
+  quiz: 10,
+  "mock-exam": 25,
+  "full-exam": 50,
+  "lesson-review": 15,
+};
+
+// Simple keyword extraction function
+const extractKeywords = (text: string): string[] => {
+  const commonWords = new Set([
+    "this",
+    "that",
+    "these",
+    "those",
+    "there",
+    "their",
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "but",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "of",
+    "with",
+    "by",
+    "from",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "have",
+    "has",
+    "had",
+    "do",
+    "does",
+    "did",
+    "will",
+    "would",
+    "could",
+    "should",
+    "may",
+    "might",
+    "can",
+    "shall",
+    "must",
+    "what",
+    "which",
+    "who",
+    "when",
+    "where",
+    "why",
+    "how",
+    "all",
+    "any",
+    "both",
+    "each",
+    "few",
+    "more",
+    "most",
+    "other",
+    "such",
+    "only",
+    "own",
+    "same",
+    "so",
+    "than",
+    "up",
+    "out",
+  ]);
+
+  const words = text.toLowerCase().match(/\b[a-z]{3,}\b/g) || [];
+  const keywords = new Set<string>();
+
+  words
+    .filter((word) => !commonWords.has(word))
+    .forEach((word) => keywords.add(word));
+
+  return Array.from(keywords).slice(0, 30);
+};
 
 interface UploadProps {
   onNavigate: (view: View) => void;
@@ -208,55 +303,37 @@ const Upload = ({ user, onStartQuiz }: UploadProps) => {
     toast.info("Generating your quiz...");
 
     try {
+      // Combine all extracted text — no re-processing needed
       const combinedText = completedFiles
-        .map((f) => f.extractedText)
+        .map((f) => f.extractedText || "")
+        .filter(Boolean)
         .join("\n\n");
 
-      console.log("Combined text length:", combinedText.length);
-      console.log("Combined text preview:", combinedText.substring(0, 200));
-
       if (!combinedText || combinedText.trim().length < 50) {
-        toast.error("Not enough content to generate questions", {
-          description: "Please upload files with more text content",
-        });
+        toast.error("Not enough content to generate questions");
         setIsGenerating(false);
         return;
       }
 
-      const mockFile = new File([combinedText], "combined.txt", {
-        type: "text/plain",
-      });
-      const content = await processDocument(mockFile);
+      // Build a content object directly — skip re-processing
+      const content = {
+        text: combinedText,
+        sentences: combinedText.split("\n").filter((s) => s.trim().length > 20),
+        headings: [],
+        keywords: extractKeywords(combinedText),
+      };
 
-      console.log("Processed content:", content);
-      console.log("Content text length:", content?.text?.length || 0);
-      console.log("Content sentences count:", content?.sentences?.length || 0);
-      console.log("Content keywords count:", content?.keywords?.length || 0);
-
-      if (!content || !content.text || content.text.trim().length < 50) {
-        toast.error("Could not process document content", {
-          description: "The uploaded files may not contain readable text",
-        });
-        setIsGenerating(false);
-        return;
-      }
-
-      const questionCount = getRecommendedQuestionCount(selectedQuizType);
-      console.log("Question count requested:", questionCount);
-      console.log("Quiz type:", selectedQuizType);
+      // Send combined text to Python for quiz generation
+      const questionCount = QUIZ_QUESTION_COUNTS[selectedQuizType];
 
       const questions = await generateQuizFromContent(content, {
         questionCount,
         quizType: selectedQuizType,
       });
 
-      console.log("Generated questions count:", questions.length);
-      console.log("Generated questions sample:", questions.slice(0, 2));
-
-      if (questions.length === 0) {
-        toast.error("Could not generate questions from the uploaded files", {
-          description:
-            "Try uploading files with more structured content (definitions, terms, etc.)",
+      if (!questions || questions.length === 0) {
+        toast.error("Could not generate questions from uploaded files", {
+          description: "Try uploading files with more structured content",
         });
         setIsGenerating(false);
         return;
@@ -265,7 +342,7 @@ const Upload = ({ user, onStartQuiz }: UploadProps) => {
       const quiz = createQuiz({
         userId: user.id,
         quizType: selectedQuizType,
-        title: `${getQuizTitle(selectedQuizType)} - ${new Date().toLocaleDateString()}`,
+        title: `${QUIZ_TITLES[selectedQuizType]} - ${new Date().toLocaleDateString()}`,
         totalQuestions: questions.length,
         fileIds: [],
       });
@@ -278,6 +355,7 @@ const Upload = ({ user, onStartQuiz }: UploadProps) => {
       setIsGenerating(false);
       onStartQuiz(quiz, createdQuestions);
     } catch (error) {
+      console.error("Quiz generation error:", error);
       toast.error("Failed to generate quiz");
       setIsGenerating(false);
     }
@@ -446,7 +524,7 @@ const Upload = ({ user, onStartQuiz }: UploadProps) => {
                 </>
               ) : (
                 <>
-                  Generate {getQuizTitle(selectedQuizType)}
+                  Generate {QUIZ_TITLES[selectedQuizType]}
                   <ChevronRight className="ml-2 h-5 w-5" />
                 </>
               )}
