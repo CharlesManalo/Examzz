@@ -246,10 +246,16 @@ const Upload = ({ user, onStartQuiz }: UploadProps) => {
       }
 
       const questionCount = getRecommendedQuestionCount(selectedQuizType);
+      console.log("Question count requested:", questionCount);
+      console.log("Quiz type:", selectedQuizType);
+
       const questions = generateQuiz(content, {
         questionCount,
         quizType: selectedQuizType,
       });
+
+      console.log("Generated questions count:", questions.length);
+      console.log("Generated questions sample:", questions.slice(0, 2));
 
       if (questions.length === 0) {
         toast.error("Could not generate questions from the uploaded files", {

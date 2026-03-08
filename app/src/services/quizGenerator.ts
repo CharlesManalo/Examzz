@@ -42,22 +42,30 @@ export const generateQuiz = (
   }
 
   if (opts.includeDefinitions) {
+    console.log("Generating definition questions...");
     const definitionQuestions = generateDefinitionQuestions(content);
+    console.log("Definition questions generated:", definitionQuestions.length);
     questions.push(...definitionQuestions);
   }
 
   if (opts.includeFillBlanks) {
+    console.log("Generating fill-in-the-blank questions...");
     const fillBlankQuestions = generateFillBlankQuestions(content);
+    console.log("Fill-blank questions generated:", fillBlankQuestions.length);
     questions.push(...fillBlankQuestions);
   }
 
   if (opts.includeKeywords) {
+    console.log("Generating keyword questions...");
     const keywordQuestions = generateKeywordQuestions(content);
+    console.log("Keyword questions generated:", keywordQuestions.length);
     questions.push(...keywordQuestions);
   }
 
   if (opts.includeMultipleChoice) {
+    console.log("Generating multiple choice questions...");
     const mcQuestions = generateMultipleChoiceQuestions(content);
+    console.log("Multiple choice questions generated:", mcQuestions.length);
     questions.push(...mcQuestions);
   }
 
