@@ -13,11 +13,18 @@ import type {
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing Supabase environment variables");
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase =
+  !supabaseUrl || !supabaseAnonKey
+    ? (() => {
+        console.warn(
+          "Missing Supabase environment variables. Please set up your Supabase project.",
+        );
+        return createClient(
+          "https://placeholder.supabase.co",
+          "placeholder-anon-key",
+        );
+      })()
+    : createClient(supabaseUrl, supabaseAnonKey);
 
 // Database types based on Supabase schema
 interface DatabaseUser {
