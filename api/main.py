@@ -17,14 +17,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Create FastAPI app
-# root_path="/api" tells FastAPI that it's mounted under /api on Vercel
 app = FastAPI(
     title="Examzz API",
     description="API for quiz generation and document processing",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc",
-    root_path="/api"          # ← KEY FIX: matches Vercel's /api/(.*) route
+    redoc_url="/redoc"
 )
 
 # Add CORS middleware
@@ -92,8 +90,8 @@ async def root():
     return {
         "message": "Examzz API is running",
         "version": "1.0.0",
-        "docs": "/api/docs",
-        "health": "/api/health"
+        "docs": "/docs",
+        "health": "/health"
     }
 
 # Health check endpoint
