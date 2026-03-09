@@ -16,14 +16,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Create FastAPI app
+# Create FastAPI app - REMOVE root_path
 app = FastAPI(
     title="Examzz API",
     description="API for quiz generation and document processing",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc",
-    root_path="/api"  # Tells FastAPI to ignore /api prefix from URL
+    redoc_url="/redoc"
+    # root_path="/api"  # REMOVED - Vercel handles this
 )
 
 # Add CORS middleware
@@ -80,13 +80,13 @@ app.add_middleware(SimpleRateLimitMiddleware, calls=rate_limit, period=rate_wind
 # Import and include routers
 try:
     from src.routers.quiz import router as quiz_router
-    app.include_router(quiz_router, prefix="/quiz")  # Add prefix here
+    app.include_router(quiz_router, prefix="/api/quiz")  # Full path to match Vercel
     logger.info("Quiz router included successfully")
 except ImportError as e:
     logger.error(f"Failed to import quiz router: {e}")
 
 # Test endpoint for debugging
-@app.post("/quiz/test")
+@app.post("/api/quiz/test")
 async def test_quiz():
     return {"message": "Quiz route is working", "timestamp": "2025-03-09"}
 
@@ -130,8 +130,8 @@ async def http_exception_handler(request, exc):
         content={"detail": exc.detail}
     )
 
-# Mangum handler for Vercel serverless
-handler = Mangum(app, lifespan="off", api_gateway_base_path="/api")
+# Mangum handler for Vercel serverless - REMOVE api_gateway_base_path
+handler = Mangum(app, lifespan="off")
 
 # Local dev runner
 if __name__ == "__main__":
