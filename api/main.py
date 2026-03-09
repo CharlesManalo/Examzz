@@ -128,7 +128,7 @@ async def http_exception_handler(request, exc):
 
 # ↓ KEY FIX: Mangum wraps the ASGI app for Vercel's serverless environment
 # api_gateway_base_path strips the /api prefix so FastAPI sees clean paths
-handler = Mangum(app, lifespan="off", api_gateway_base_path="/api")
+handler = Mangum(app)
 
 # Local dev runner
 if __name__ == "__main__":
