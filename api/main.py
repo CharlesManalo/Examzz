@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 # Configure Gemini
 try:
-    from google import generativeai as genai
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    from google import genai
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     GEMINI_CONFIGURED = True
     logger.info("Gemini API configured successfully")
 except Exception as e:
@@ -36,14 +36,6 @@ def generate_quiz_logic(content: bytes, filename: str, question_count: int = 10,
     max_chars = 5000
     if len(extracted_text) > max_chars:
         extracted_text = extracted_text[:max_chars] + "..."
-
-    model = genai.GenerativeModel(model_name="gemini-flash-latest",
-        generation_config={
-            "response_mime_type": "application/json",
-            "temperature": 0.7,
-            "max_output_tokens": 2048,
-        }
-    )
 
     difficulty_prompts = {
         "easy": "simple, straightforward questions that test basic understanding",
@@ -78,7 +70,11 @@ def generate_quiz_logic(content: bytes, filename: str, question_count: int = 10,
     {extracted_text}
     """
 
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=prompt,
+        config={"response_mime_type": "application/json", "temperature": 0.7, "max_output_tokens": 2048}
+    )
 
     if not response.text:
         raise ValueError("Empty response from Gemini.")
@@ -183,8 +179,10 @@ class handler(BaseHTTPRequestHandler):
             if not GEMINI_CONFIGURED:
                 self._json_response(500, {"detail": "Gemini API not configured"})
                 return
-            model = genai.GenerativeModel(model_name="gemini-2.0-flash")
-            response = model.generate_content("Hello! Please respond with 'Gemini is working.'")
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents="Hello! Please respond with 'Gemini is working.'"
+            )
             self._json_response(200, {"success": True, "response": response.text})
         except Exception as e:
             self._json_response(500, {"detail": str(e)})
