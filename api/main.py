@@ -121,18 +121,6 @@ async def root():
         "health": "/health"
     }
 
-# Health check endpoint - UPDATE PATH
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "environment": os.getenv("DEBUG", "False"),
-        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
-        "rate_limit": {
-            "calls": rate_limit,
-            "period": rate_window
-        }
-    }
 
 # Global exception handler
 @app.exception_handler(Exception)

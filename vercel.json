@@ -21,7 +21,7 @@
     },
     {
       "source": "/(.*)",
-      "destination": "/dist/index.html"
+      "destination": "/app/dist/index.html"
     }
   ]
 }
