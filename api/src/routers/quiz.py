@@ -15,8 +15,8 @@ from utils.extract_text import extract_text_from_file, validate_file_before_extr
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ← No prefix here; prefix="/quiz" is set when including in main.py
-router = APIRouter(tags=["quiz"])
+# ← Include full path for Vercel compatibility
+router = APIRouter(prefix="/api/quiz", tags=["quiz"])
 
 # Configure Gemini API
 try:
