@@ -4,7 +4,10 @@
     {
       "src": "app/package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "config": {
+        "distDir": "dist",
+        "buildCommand": "cd app && npm run build"
+      }
     },
     {
       "src": "api/main.py",
