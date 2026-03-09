@@ -10,7 +10,7 @@ import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from utils.extract_text import extract_text_from_file, validate_file_before_extraction
+from src.utils.extract_text import extract_text_from_file, validate_file_before_extraction
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

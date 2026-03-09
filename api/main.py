@@ -80,13 +80,13 @@ app.add_middleware(SimpleRateLimitMiddleware, calls=rate_limit, period=rate_wind
 # Import and include routers
 try:
     from src.routers.quiz import router as quiz_router
-    app.include_router(quiz_router, prefix="/api/quiz")  # Full path to match Vercel
+    app.include_router(quiz_router, prefix="/quiz")  # Remove /api prefix
     logger.info("Quiz router included successfully")
 except ImportError as e:
     logger.error(f"Failed to import quiz router: {e}")
 
-# Test endpoint for debugging
-@app.post("/api/quiz/test")
+# Test endpoint for debugging - UPDATE PATH
+@app.post("/quiz/test")
 async def test_quiz():
     return {"message": "Quiz route is working", "timestamp": "2025-03-09"}
 
@@ -100,8 +100,8 @@ async def root():
         "health": "/health"
     }
 
-# Health check endpoint
-@app.get("/health")
+# Health check endpoint - UPDATE PATH
+@app.get("/api/health")
 async def health_check():
     return {
         "status": "healthy",
