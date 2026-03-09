@@ -12,7 +12,8 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/main.py" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+    { "source": "/api/(.*)", "destination": "/api/main.py" },
+    { "source": "/(.*)", "destination": "/app/index.html" }
+  ],
+  "outputDirectory": "app/dist"
 }
