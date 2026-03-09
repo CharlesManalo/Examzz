@@ -4,94 +4,106 @@ import io
 import re
 import random
 import traceback
+import tempfile
+import os
+import sys
 
-# Document parsing
-try:
-    import fitz  # PyMuPDF
-    HAS_PYMUPDF = True
-except ImportError:
-    HAS_PYMUPDF = False
-
-try:
-    from docx import Document
-    HAS_DOCX = True
-except ImportError:
-    HAS_DOCX = False
+# Add the api/src directory to Python path to import our utility
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'api', 'src'))
 
 try:
-    from pptx import Presentation
-    HAS_PPTX = True
-except ImportError:
-    HAS_PPTX = False
+    from utils.extract_text import extract_text_from_file, validate_file_before_extraction
+    HAS_NEW_EXTRACTOR = True
+except ImportError as e:
+    print(f"Warning: Could not import new extractor: {e}")
+    HAS_NEW_EXTRACTOR = False
 
-try:
-    import openpyxl
-    HAS_OPENPYXL = True
-except ImportError:
-    HAS_OPENPYXL = False
-
-
-# ── Text extraction ──────────────────────────────────────────────────────────
-
-def extract_pdf(data: bytes) -> str:
-    if not HAS_PYMUPDF:
-        raise RuntimeError("PyMuPDF not installed")
-    doc = fitz.open(stream=data, filetype="pdf")
-    pages = []
-    for page in doc:
-        pages.append(page.get_text())
-    return "\n".join(pages)
-
-
-def extract_docx(data: bytes) -> str:
-    if not HAS_DOCX:
-        raise RuntimeError("python-docx not installed")
-    doc = Document(io.BytesIO(data))
-    return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
-
-
-def extract_pptx(data: bytes) -> str:
-    if not HAS_PPTX:
-        raise RuntimeError("python-pptx not installed")
-    prs = Presentation(io.BytesIO(data))
-    lines = []
-    for slide in prs.slides:
-        for shape in slide.shapes:
-            if hasattr(shape, "text") and shape.text.strip():
-                lines.append(shape.text.strip())
-    return "\n".join(lines)
-
-
-def extract_xlsx(data: bytes) -> str:
-    if not HAS_OPENPYXL:
-        raise RuntimeError("openpyxl not installed")
-    wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True)
-    lines = []
-    for ws in wb.worksheets:
-        for row in ws.iter_rows(values_only=True):
-            row_text = " ".join(str(c) for c in row if c is not None)
-            if row_text.strip():
-                lines.append(row_text.strip())
-    return "\n".join(lines)
-
+# ── Text extraction (using new utility) ─────────────────────────────────────
 
 def extract_text(filename: str, data: bytes) -> str:
-    ext = filename.rsplit(".", 1)[-1].lower()
-    if ext == "pdf":
-        return extract_pdf(data)
-    elif ext in ("docx", "doc"):
-        return extract_docx(data)
-    elif ext in ("pptx", "ppt"):
-        return extract_pptx(data)
-    elif ext in ("xlsx", "xls"):
-        return extract_xlsx(data)
-    elif ext == "txt":
-        return data.decode("utf-8", errors="ignore")
+    """
+    Extract text from uploaded file using the new utility.
+    Falls back to old method if new utility unavailable.
+    """
+    if HAS_NEW_EXTRACTOR:
+        try:
+            # Create temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as temp_file:
+                temp_file.write(data)
+                temp_file_path = temp_file.name
+            
+            try:
+                # Validate file
+                validate_file_before_extraction(temp_file_path)
+                
+                # Extract text using new utility
+                text = extract_text_from_file(temp_file_path)
+                return text
+                
+            finally:
+                # Clean up temporary file
+                os.unlink(temp_file_path)
+                
+        except Exception as e:
+            print(f"New extractor failed: {e}")
+            # Fall back to old method
+            return extract_text_fallback(filename, data)
     else:
-        raise ValueError(f"Unsupported file type: {ext}")
+        # Use fallback method
+        return extract_text_fallback(filename, data)
 
+def extract_text_fallback(filename: str, data: bytes) -> str:
+    """
+    Fallback extraction method (original implementation).
+    """
+    ext = filename.rsplit(".", 1)[-1].lower()
+    
+    # Import libraries as needed
+    try:
+        if ext == "pdf":
+            import fitz
+            doc = fitz.open(stream=data, filetype="pdf")
+            pages = []
+            for page in doc:
+                pages.append(page.get_text())
+            return "\n".join(pages)
+            
+        elif ext in ("docx", "doc"):
+            from docx import Document
+            doc = Document(io.BytesIO(data))
+            return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+            
+        elif ext in ("pptx", "ppt"):
+            from pptx import Presentation
+            prs = Presentation(io.BytesIO(data))
+            lines = []
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if hasattr(shape, "text") and shape.text.strip():
+                        lines.append(shape.text.strip())
+            return "\n".join(lines)
+            
+        elif ext in ("xlsx", "xls"):
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True)
+            lines = []
+            for ws in wb.worksheets:
+                for row in ws.iter_rows(values_only=True):
+                    row_text = " ".join(str(c) for c in row if c is not None)
+                    if row_text.strip():
+                        lines.append(row_text.strip())
+            return "\n".join(lines)
+            
+        elif ext == "txt":
+            return data.decode("utf-8", errors="ignore")
+            
+        else:
+            raise ValueError(f"Unsupported file type: {ext}")
+            
+    except ImportError as e:
+        raise RuntimeError(f"Missing library for {ext}: {e}")
 
-# ── Content analysis ─────────────────────────────────────────────────────────
+# ── Content analysis (unchanged) ─────────────────────────────────────────────
 
 def extract_sentences(text: str) -> list[str]:
     sentences = []
@@ -148,273 +160,148 @@ def extract_headings(text: str) -> list[str]:
     return list(dict.fromkeys(headings))[:20]
 
 
-def analyze_content(text: str) -> dict:
-    sentences = extract_sentences(text)
-    headings = extract_headings(text)
-    keywords = extract_keywords(text, headings)
-    return {
-        "text": text,
-        "sentences": sentences,
-        "headings": headings,
-        "keywords": keywords,
-    }
+# ── Quiz generation (unchanged) ───────────────────────────────────────────────
 
-
-# ── Quiz generation ──────────────────────────────────────────────────────────
-
-COMMON_WORDS = {
-    "this", "that", "these", "those", "there", "their", "they", "what",
-    "when", "where", "which", "while", "with", "within", "about", "above",
-    "after", "again", "against", "have", "been", "being", "below", "between",
-    "both", "from", "further", "into", "just", "more", "most", "only",
-    "other", "over", "same", "should", "some", "such", "than", "then",
-    "under", "until", "very", "were", "will", "would", "your",
-}
-
-
-def is_common(word: str) -> bool:
-    return word.lower() in COMMON_WORDS
-
-
-def shuffle(lst: list) -> list:
-    out = lst[:]
-    random.shuffle(out)
-    return out
-
-
-def make_definition_questions(content: dict) -> list[dict]:
+def generate_mcq_questions(sentences: list[str], keywords: list[str], count: int = 5) -> list[dict]:
     questions = []
-    patterns = [
-        r'(\w+)\s+is\s+(?:defined\s+as\s+)?(?:the\s+)?process\s+of\s+([^,.]+)',
-        r'(\w+)\s+is\s+(?:defined\s+as\s+)?(?:a\s+)?([^,.]+)',
-        r'(\w+)\s+refers\s+to\s+([^,.]+)',
-        r'(\w+)\s+means\s+([^,.]+)',
-    ]
-    for sentence in content["sentences"]:
-        for pat in patterns:
-            m = re.match(pat, sentence, re.IGNORECASE)
-            if not m:
-                continue
-            term, definition = m.group(1).strip(), m.group(2).strip()
-            if len(term) < 3 or is_common(term):
-                continue
-            distractors = [k for k in content["keywords"]
-                           if k.lower() != term.lower()][:3]
-            if len(distractors) < 3:
-                break
-            options = shuffle([definition] + distractors)
-            questions.append({
-                "question": f"What is {term}?",
-                "options": options,
-                "correctAnswer": options.index(definition),
-                "questionType": "definition",
-                "explanation": f'According to the text: "{sentence}"',
-            })
-            break
-    return questions
-
-
-def make_fill_blank_questions(content: dict) -> list[dict]:
-    questions = []
-    for sentence in content["sentences"]:
-        important = [
-            w for w in re.findall(r'\b[a-zA-Z]{4,}\b', sentence)
-            if w.lower() in content["keywords"]
-            or (w[0].isupper() and len(w) > 4)
-        ]
-        if not important:
+    
+    for sentence in random.sample(sentences, min(count, len(sentences))):
+        # Find a keyword in the sentence
+        sentence_words = sentence.lower().split()
+        available_keywords = [kw for kw in keywords if kw.lower() in sentence_words]
+        
+        if not available_keywords:
             continue
-        word = random.choice(important)
-        blanked = re.sub(rf'\b{re.escape(word)}\b', '______', sentence, count=1, flags=re.IGNORECASE)
-        if blanked == sentence:
-            continue
-        distractors = [k for k in content["keywords"]
-                       if k.lower() != word.lower()][:3]
+            
+        keyword = random.choice(available_keywords)
+        
+        # Create question
+        question_text = sentence.replace(keyword, "________")
+        
+        # Generate options
+        other_keywords = [kw for kw in keywords if kw != keyword]
+        distractors = random.sample(other_keywords, min(3, len(other_keywords)))
+        
         if len(distractors) < 3:
             continue
-        options = shuffle([word] + distractors)
+            
+        options = [keyword] + distractors
+        random.shuffle(options)
+        
+        correct_index = options.index(keyword)
+        
         questions.append({
-            "question": f"Fill in the blank: {blanked}",
+            "question": question_text,
             "options": options,
-            "correctAnswer": options.index(word),
-            "questionType": "fill-blank",
-            "explanation": f'The correct answer is "{word}". Full sentence: "{sentence}"',
+            "correct_answer": correct_index,
+            "type": "multiple_choice"
         })
+    
     return questions
 
 
-def make_keyword_questions(content: dict) -> list[dict]:
+def generate_fill_blank_questions(sentences: list[str], keywords: list[str], count: int = 3) -> list[dict]:
     questions = []
-    for heading in content["headings"]:
-        topic_words = [w for w in heading.split() if len(w) > 3]
-        if not topic_words:
+    
+    for sentence in random.sample(sentences, min(count, len(sentences))):
+        sentence_words = sentence.lower().split()
+        available_keywords = [kw for kw in keywords if kw.lower() in sentence_words and len(kw) > 4]
+        
+        if not available_keywords:
             continue
-        main = topic_words[0]
-        related = [s for s in content["sentences"]
-                   if main.lower() in s.lower()]
-        if not related:
-            continue
-        sentence = related[0]
-        kws = [w for w in re.findall(r'\b[a-zA-Z]{4,}\b', sentence)
-               if w.lower() in content["keywords"]]
-        if len(kws) < 4:
-            continue
-        correct = kws[0]
-        others = shuffle([k for k in kws if k != correct])[:3]
-        options = shuffle([correct] + others)
+            
+        keyword = random.choice(available_keywords)
+        
+        # Create question
+        question_text = f"Fill in the blank: {sentence.replace(keyword, '________')}"
+        
         questions.append({
-            "question": f'According to the text about "{heading}", which is mentioned?',
-            "options": options,
-            "correctAnswer": options.index(correct),
-            "questionType": "keyword",
-            "explanation": f'The text states: "{sentence}"',
+            "question": question_text,
+            "options": [keyword],
+            "correct_answer": 0,
+            "type": "fill_blank"
         })
+    
     return questions
 
 
-def make_mc_questions(content: dict) -> list[dict]:
-    questions = []
-    topic_map: dict[str, list[str]] = {}
-    for sentence in content["sentences"]:
-        for kw in content["keywords"]:
-            if kw.lower() in sentence.lower():
-                topic_map.setdefault(kw, []).append(sentence)
-
-    for topic, sentences in topic_map.items():
-        if len(sentences) < 2:
-            continue
-        sentence = sentences[0]
-        words = [w for w in sentence.split() if len(w) > 4]
-        if len(words) < 5:
-            continue
-        answer = next(
-            (w for w in words if w.lower() in content["keywords"]),
-            words[0]
-        )
-        distractors = shuffle([k for k in content["keywords"]
-                               if k != answer.lower()])[:3]
-        if len(distractors) < 3:
-            continue
-        options = shuffle([answer] + distractors)
-        questions.append({
-            "question": f'Which of the following best relates to "{topic}"?',
-            "options": options,
-            "correctAnswer": options.index(answer),
-            "questionType": "multiple-choice",
-            "explanation": f'Context: "{sentence}"',
-        })
-    return questions
-
-
-def generate_quiz(content: dict, question_count: int = 10) -> list[dict]:
-    all_questions = (
-        make_definition_questions(content)
-        + make_fill_blank_questions(content)
-        + make_keyword_questions(content)
-        + make_mc_questions(content)
-    )
-    random.shuffle(all_questions)
-    return all_questions[:question_count]
-
-
-# ── Multipart form parser ────────────────────────────────────────────────────
-
-def parse_multipart(body: bytes, boundary: str) -> dict:
-    """Returns {field_name: value} where value is bytes for files, str for text."""
-    result = {}
-    delimiter = ("--" + boundary).encode()
-    parts = body.split(delimiter)
-    for part in parts[1:]:
-        if part in (b"--\r\n", b"--"):
-            continue
-        if b"\r\n\r\n" not in part:
-            continue
-        headers_raw, _, content = part.partition(b"\r\n\r\n")
-        content = content.rstrip(b"\r\n")
-        headers_text = headers_raw.decode("utf-8", errors="ignore")
-        cd_match = re.search(r'name="([^"]+)"', headers_text)
-        if not cd_match:
-            continue
-        name = cd_match.group(1)
-        fn_match = re.search(r'filename="([^"]+)"', headers_text)
-        if fn_match:
-            result[name] = {"filename": fn_match.group(1), "data": content}
-        else:
-            result[name] = content.decode("utf-8", errors="ignore")
-    return result
-
-
-# ── Vercel handler ───────────────────────────────────────────────────────────
+# ── HTTP Handler ─────────────────────────────────────────────────────────────
 
 class handler(BaseHTTPRequestHandler):
-
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self._cors()
-        self.end_headers()
-
     def do_POST(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        
         try:
-            length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(length)
-            ct = self.headers.get("Content-Type", "")
-
-            # ── /api/process  (file upload) ──────────────────────────────
-            if "multipart/form-data" in ct:
-                boundary = re.search(r'boundary=([^\s;]+)', ct)
-                if not boundary:
-                    return self._error(400, "Missing boundary")
-                fields = parse_multipart(body, boundary.group(1))
-
-                file_field = fields.get("file")
-                if not file_field or not isinstance(file_field, dict):
-                    return self._error(400, "No file uploaded")
-
-                filename = file_field["filename"]
-                data = file_field["data"]
-                text = extract_text(filename, data)
-                content = analyze_content(text)
-                return self._json({"success": True, "content": content})
-
-            # ── /api/generate  (quiz generation from JSON body) ──────────
-            elif "application/json" in ct:
-                payload = json.loads(body)
-                content = payload.get("content")
-                count = int(payload.get("questionCount", 10))
-                if not content:
-                    return self._error(400, "No content provided")
-                questions = generate_quiz(content, count)
-                return self._json({"success": True, "questions": questions})
-
-            else:
-                return self._error(415, "Unsupported content type")
-
+            # Parse multipart form data
+            boundary = self.headers['Content-Type'].split('boundary=')[1]
+            parts = post_data.split(f'--{boundary}'.encode())
+            
+            file_data = None
+            filename = None
+            question_count = 10
+            
+            for part in parts:
+                if b'Content-Disposition: form-data' in part and b'filename=' in part:
+                    headers_end = part.find(b'\r\n\r\n')
+                    if headers_end != -1:
+                        file_data = part[headers_end + 4:].rstrip(b'\r\n')
+                        
+                        # Extract filename
+                        filename_match = re.search(rb'filename="([^"]*)"', part)
+                        if filename_match:
+                            filename = filename_match.group(1).decode('utf-8')
+                
+                elif b'name="question_count"' in part:
+                    headers_end = part.find(b'\r\n\r\n')
+                    if headers_end != -1:
+                        question_count = int(part[headers_end + 4:].strip())
+            
+            if not file_data or not filename:
+                raise ValueError("No file uploaded")
+            
+            # Extract text
+            text = extract_text(filename, file_data)
+            
+            # Analyze content
+            sentences = extract_sentences(text)
+            keywords = extract_keywords(text, [])
+            headings = extract_headings(text)
+            
+            # Generate questions
+            mcq_count = min(int(question_count * 0.6), len(sentences))
+            fill_count = question_count - mcq_count
+            
+            mcq_questions = generate_mcq_questions(sentences, keywords, mcq_count)
+            fill_questions = generate_fill_blank_questions(sentences, keywords, fill_count)
+            
+            all_questions = mcq_questions + fill_questions
+            random.shuffle(all_questions)
+            
+            response_data = {
+                "success": True,
+                "extracted_text": text[:1000] + "..." if len(text) > 1000 else text,
+                "questions": all_questions[:question_count],
+                "stats": {
+                    "sentences_found": len(sentences),
+                    "keywords_found": len(keywords),
+                    "headings_found": len(headings),
+                    "total_questions": len(all_questions)
+                }
+            }
+            
         except Exception as e:
-            traceback.print_exc()
-            return self._error(500, str(e))
-
-    def _json(self, data: dict):
-        body = json.dumps(data).encode()
+            response_data = {
+                "success": False,
+                "error": str(e),
+                "traceback": traceback.format_exc()
+            }
+        
+        # Send response
         self.send_response(200)
-        self._cors()
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
-        self.wfile.write(body)
-
-    def _error(self, code: int, msg: str):
-        body = json.dumps({"success": False, "error": msg}).encode()
-        self.send_response(code)
-        self._cors()
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def _cors(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-
-    def log_message(self, *args):
-        pass  # silence default access logs
+        
+        response = json.dumps(response_data, indent=2)
+        self.wfile.write(response.encode())

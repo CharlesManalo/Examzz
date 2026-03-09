@@ -14,7 +14,7 @@ import Home from "@/sections/Home";
 import Login from "@/sections/Login";
 import Register from "@/sections/Register";
 import Dashboard from "@/sections/Dashboard";
-import Upload from "@/sections/Upload";
+import QuizUpload from "@/components/QuizUpload";
 import Exam from "@/sections/Exam";
 import Results from "@/sections/Results";
 import Review from "@/sections/Review";
@@ -159,11 +159,7 @@ function App() {
 
       case "upload":
         return currentUser ? (
-          <Upload
-            onNavigate={navigateTo}
-            user={currentUser}
-            onStartQuiz={startQuiz}
-          />
+          <QuizUpload />
         ) : (
           <Login onNavigate={navigateTo} onLogin={handleLogin} />
         );
