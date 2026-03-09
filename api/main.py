@@ -4,7 +4,6 @@ from fastapi.responses import JSONResponse
 import os
 import logging
 from dotenv import load_dotenv
-from mangum import Mangum
 
 # Load environment variables
 load_dotenv()
@@ -140,8 +139,8 @@ async def http_exception_handler(request, exc):
         content={"detail": exc.detail}
     )
 
-# Mangum handler for Vercel serverless - REMOVE api_gateway_base_path
-handler = Mangum(app, lifespan="off")
+# Vercel handler - expose FastAPI app directly
+handler = app
 
 # Local dev runner
 if __name__ == "__main__":
