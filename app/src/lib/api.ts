@@ -52,15 +52,15 @@ api.interceptors.response.use(
 // Quiz API endpoints
 export const quizAPI = {
   generate: (formData: FormData) =>
-    api.post("/api/quiz/generate", formData, {
+    api.post("/quiz/generate", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
     }),
 
-  health: () => api.get("/api/quiz/health"),
+  health: () => api.get("/quiz/health"),
 
-  testGemini: () => api.post("/api/quiz/test-gemini"),
+  testGemini: () => api.post("/quiz/test-gemini"),
 };
 
 export default api;

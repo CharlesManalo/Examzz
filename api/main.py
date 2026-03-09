@@ -101,7 +101,7 @@ async def root():
     }
 
 # Health check endpoint - UPDATE PATH
-@app.get("/api/health")
+@app.get("/health")
 async def health_check():
     return {
         "status": "healthy",
