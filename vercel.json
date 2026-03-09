@@ -4,26 +4,21 @@
     {
       "src": "app/package.json",
       "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+      "config": { "distDir": "dist" }
     },
     {
       "src": "api/main.py",
       "use": "@vercel/python"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "api/main.py"
+      "source": "/api/:path*",
+      "destination": "/api/main.py"
     },
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/app/dist/index.html"
+      "source": "/(.*)",
+      "destination": "/app/index.html"
     }
   ]
 }

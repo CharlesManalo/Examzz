@@ -22,7 +22,8 @@ app = FastAPI(
     description="API for quiz generation and document processing",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    root_path="/api"  # Tells FastAPI to ignore /api prefix from URL
 )
 
 # Add CORS middleware
@@ -79,7 +80,7 @@ app.add_middleware(SimpleRateLimitMiddleware, calls=rate_limit, period=rate_wind
 # Import and include routers
 try:
     from src.routers.quiz import router as quiz_router
-    app.include_router(quiz_router)  # No prefix - router has /api/quiz
+    app.include_router(quiz_router, prefix="/quiz")  # Router has /quiz prefix
     logger.info("Quiz router included successfully")
 except ImportError as e:
     logger.error(f"Failed to import quiz router: {e}")
