@@ -8,3 +8,4 @@ python-pptx
 PyMuPDF
 google-generativeai
 python-dotenv
+mangum

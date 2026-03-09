@@ -1,9 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import os
 import logging
 from dotenv import load_dotenv
+from mangum import Mangum
 
 # Load environment variables
 load_dotenv()
@@ -143,3 +144,6 @@ if __name__ == "__main__":
         reload=debug,
         log_level="info"
     )
+
+# Vercel serverless handler
+handler = Mangum(app)
