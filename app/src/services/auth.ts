@@ -182,13 +182,26 @@ export const signIn = async (
     // User doesn't exist in our table, create profile
     const { data: newDbUser, error: createError } = await supabase
       .from("users")
-      .insert({
-        id: authData.user.id,
-        email: authData.user.email,
-        is_premium: false,
-        subscription_status: "free",
-        plan_type: "free",
-      })
+      .upsert(
+        {
+          id: authData.user.id,
+          email: authData.user.email,
+          is_premium: false,
+          paymongo_customer_id: null,
+          subscription_status: "free",
+          plan_type: "basic",
+          subscription_id: null,
+          subscription_end_date: null,
+          email_verified: authData.user.email_confirmed_at ? true : false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          last_login: new Date().toISOString(),
+        },
+        {
+          onConflict: "id",
+          ignoreDuplicates: false,
+        },
+      )
       .select()
       .single();
 
@@ -227,13 +240,19 @@ export const getCurrentUser = async (): Promise<User | null> => {
     // Create profile if it doesn't exist
     const { data: newDbUser, error: createError } = await supabase
       .from("users")
-      .insert({
-        id: authUser.id,
-        email: authUser.email,
-        is_premium: false,
-        subscription_status: "free",
-        plan_type: "free",
-      })
+      .upsert(
+        {
+          id: authUser.id,
+          email: authUser.email,
+          is_premium: false,
+          subscription_status: "free",
+          plan_type: "free",
+        },
+        {
+          onConflict: "id",
+          ignoreDuplicates: false,
+        },
+      )
       .select()
       .single();
 
@@ -290,14 +309,30 @@ export const signUpWithGoogle = async (): Promise<void> => {
 
 // Session management
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
-  return supabase.auth.onAuthStateChange(async (_event, session) => {
+  let mounted = true;
+
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    if (!mounted) return; // Prevent updates if component unmounted
+
     if (session?.user) {
       const user = await getCurrentUser();
-      callback(user);
+      if (mounted) {
+        callback(user);
+      }
     } else {
-      callback(null);
+      if (mounted) {
+        callback(null);
+      }
     }
   });
+
+  // Return cleanup function
+  return () => {
+    mounted = false;
+    subscription?.unsubscribe();
+  };
 };
 
 // User management functions

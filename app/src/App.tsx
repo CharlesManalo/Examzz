@@ -45,17 +45,18 @@ function App() {
     });
 
     // Listen for auth state changes
-    const {
-      data: { subscription },
-    } = onAuthStateChange((user) => {
+    const unsubscribe = onAuthStateChange((user) => {
       setCurrentUserState(user);
       if (user) {
         trackActiveUser();
       }
     });
 
+    // Cleanup on unmount
     return () => {
-      subscription?.unsubscribe();
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
   }, []);
 

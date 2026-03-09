@@ -5,9 +5,15 @@ import App from "./App.tsx";
 import ErrorBoundary from "./components/ErrorBoundary.tsx";
 
 createRoot(document.getElementById("root")!).render(
-  <StrictMode>
+  import.meta.env.DEV ? (
+    <StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </StrictMode>
+  ) : (
     <ErrorBoundary>
       <App />
     </ErrorBoundary>
-  </StrictMode>,
+  ),
 );
