@@ -22,5 +22,11 @@
       "src": "/(.*)",
       "dest": "/app/$1"
     }
-  ]
+  ],
+  "functions": {
+    "api/main.py": {
+      "runtime": "python3.12",
+      "maxDuration": 60
+    }
+  }
 }
