@@ -1,15 +1,26 @@
 {
   "version": 2,
-  "buildCommand": "cd app && npm install && npm run build",
-  "outputDirectory": "app/dist",
-  "functions": {
-    "api/main.py": {
-      "runtime": "python3.12",
-      "maxDuration": 60
+  "builds": [
+    {
+      "src": "app/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "api/main.py",
+      "use": "@vercel/python"
     }
-  },
+  ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/(.*)", "dest": "/app/$1" }
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/main.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/app/$1"
+    }
   ]
 }
