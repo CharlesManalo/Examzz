@@ -3,10 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import os
 import logging
+import sys
 from dotenv import load_dotenv
 from google import generativeai as genai
 import tempfile
 import json
+
+# Fix import path for Vercel
+sys.path.insert(0, os.path.dirname(__file__))
+from src.routers.quiz import router as quiz_router
 
 # Load environment variables
 load_dotenv()
@@ -303,8 +308,8 @@ async def http_exception_handler(request, exc):
         content={"detail": exc.detail}
     )
 
-# Vercel handler - expose FastAPI app directly
-handler = app
+from mangum import Mangum
+handler = Mangum(app, lifespan="off")
 
 # Local dev runner
 if __name__ == "__main__":
