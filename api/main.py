@@ -79,14 +79,24 @@ app.add_middleware(SimpleRateLimitMiddleware, calls=rate_limit, period=rate_wind
 
 # Import and include routers
 try:
-    from src.routers.quiz import router as quiz_router
-    app.include_router(quiz_router, prefix="/quiz")  # Remove /api prefix
-    logger.info("Quiz router included successfully")
+    try:
+        # Works when running from inside the `api/` directory (e.g. some serverless runtimes).
+        from src.routers.quiz import router as quiz_router
+    except ImportError:
+        # Works when importing as a package from repo root (e.g. local tests).
+        from api.src.routers.quiz import router as quiz_router
+
+    # Register both route shapes to tolerate path prefix differences across
+    # local/dev runtimes and Vercel rewrites.
+    app.include_router(quiz_router, prefix="/quiz")
+    app.include_router(quiz_router, prefix="/api/quiz")
+    logger.info("Quiz router included successfully with /quiz and /api/quiz prefixes")
 except ImportError as e:
     logger.error(f"Failed to import quiz router: {e}")
 
-# Test endpoint for debugging - UPDATE PATH
+# Test endpoints for debugging (both route shapes)
 @app.post("/quiz/test")
+@app.post("/api/quiz/test")
 async def test_quiz():
     return {"message": "Quiz route is working", "timestamp": "2025-03-09"}
 
