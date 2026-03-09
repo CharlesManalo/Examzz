@@ -2,16 +2,10 @@
   "version": 2,
   "buildCommand": "cd app && npm install && npm run build",
   "outputDirectory": "app/dist",
-  "builds": [
-    {
-      "src": "api/process.py",
-      "use": "@vercel/python"
-    }
-  ],
   "functions": {
-    "api/process.py": {
+    "api/main.py": {
       "runtime": "python3.12",
-      "maxDuration": 30
+      "maxDuration": 60
     }
   },
   "routes": [
