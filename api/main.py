@@ -97,7 +97,7 @@ def generate_quiz_logic(content: bytes, filename: str, question_count: int = 10,
             "extracted_chars": len(extracted_text),
             "question_count": len(quiz_data),
             "difficulty": difficulty,
-            "model_used": "gemini-flash-latest"
+            "model_used": "gemini-2.0-flash"
         }
     }
 
@@ -183,7 +183,7 @@ class handler(BaseHTTPRequestHandler):
             if not GEMINI_CONFIGURED:
                 self._json_response(500, {"detail": "Gemini API not configured"})
                 return
-            model = genai.GenerativeModel('gemini-flash-latest')
+            model = genai.GenerativeModel(model_name="gemini-2.0-flash")
             response = model.generate_content("Hello! Please respond with 'Gemini is working.'")
             self._json_response(200, {"success": True, "response": response.text})
         except Exception as e:
