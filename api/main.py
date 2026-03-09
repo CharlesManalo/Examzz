@@ -80,7 +80,7 @@ app.add_middleware(SimpleRateLimitMiddleware, calls=rate_limit, period=rate_wind
 # Import and include routers
 try:
     from src.routers.quiz import router as quiz_router
-    app.include_router(quiz_router, prefix="/quiz")  # Router has /quiz prefix
+    app.include_router(quiz_router, prefix="/quiz")  # Add prefix here
     logger.info("Quiz router included successfully")
 except ImportError as e:
     logger.error(f"Failed to import quiz router: {e}")
@@ -130,8 +130,8 @@ async def http_exception_handler(request, exc):
         content={"detail": exc.detail}
     )
 
-# ↓ Mangum handler for Vercel serverless
-handler = Mangum(app)
+# Mangum handler for Vercel serverless
+handler = Mangum(app, lifespan="off", api_gateway_base_path="/api")
 
 # Local dev runner
 if __name__ == "__main__":
