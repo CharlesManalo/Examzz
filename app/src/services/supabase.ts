@@ -26,8 +26,24 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Create client only if we have the required values, otherwise use placeholder
 export const supabase =
   supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey)
-    : createClient("https://placeholder.supabase.co", "placeholder-key");
+    ? createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          // THIS IS THE FIX: Bypass Web Locks API to prevent React Strict Mode issues
+          lock: async (name, acquireTimeout, fn) => fn(),
+
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+        },
+      })
+    : createClient("https://placeholder.supabase.co", "placeholder-key", {
+        auth: {
+          lock: async (name, acquireTimeout, fn) => fn(),
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+        },
+      });
 
 // Database types based on Supabase schema
 interface DatabaseUser {

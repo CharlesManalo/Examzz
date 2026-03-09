@@ -313,14 +313,16 @@ export const onAuthStateChange = (callback: (user: User | null) => void) => {
 
   const {
     data: { subscription },
-  } = supabase.auth.onAuthStateChange(async (_event, session) => {
+  } = supabase.auth.onAuthStateChange((_event, session) => {
     if (!mounted) return; // Prevent updates if component unmounted
 
     if (session?.user) {
-      const user = await getCurrentUser();
-      if (mounted) {
-        callback(user);
-      }
+      // Call async function separately instead of making listener async
+      getCurrentUser().then((user) => {
+        if (mounted) {
+          callback(user);
+        }
+      });
     } else {
       if (mounted) {
         callback(null);
