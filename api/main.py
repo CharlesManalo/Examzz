@@ -79,10 +79,15 @@ app.add_middleware(SimpleRateLimitMiddleware, calls=rate_limit, period=rate_wind
 # Import and include routers
 try:
     from src.routers.quiz import router as quiz_router
-    app.include_router(quiz_router, prefix="/quiz")   # ← routes: /api/quiz/generate, etc.
+    app.include_router(quiz_router, prefix="/quiz")
     logger.info("Quiz router included successfully")
 except ImportError as e:
     logger.error(f"Failed to import quiz router: {e}")
+
+# Test endpoint for debugging
+@app.post("/quiz/test")
+async def test_quiz():
+    return {"message": "Quiz route is working", "timestamp": "2025-03-09"}
 
 # Root endpoint
 @app.get("/")
@@ -126,7 +131,7 @@ async def http_exception_handler(request, exc):
 
 # ↓ KEY FIX: Mangum wraps the ASGI app for Vercel's serverless environment
 # api_gateway_base_path strips the /api prefix so FastAPI sees clean paths
-handler = Mangum(app)
+handler = Mangum(app, api_gateway_base_path="/api")
 
 # Local dev runner
 if __name__ == "__main__":
