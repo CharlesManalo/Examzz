@@ -1,9 +1,10 @@
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import os
 import logging
 from dotenv import load_dotenv
+from mangum import Mangum
 
 # Load environment variables
 load_dotenv()
@@ -76,40 +77,28 @@ rate_limit = int(os.getenv("RATE_LIMIT_REQUESTS", "10"))
 rate_window = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
 app.add_middleware(SimpleRateLimitMiddleware, calls=rate_limit, period=rate_window)
 
-# Simple health endpoint for testing
-@app.get("/api/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "environment": os.getenv("DEBUG", "False"),
-        "gemini_configured": bool(os.getenv("GEMINI_API_KEY"))
-    }
-
-@app.post("/api/quiz/generate")
-async def generate_quiz(file: UploadFile = File(...)):
+# Import and include routers
+try:
     try:
-        from google import generativeai as genai
-        import json
-        
-        # Configure Gemini
-        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        
-        # Read file content
-        content = await file.read()
-        text_context = content.decode('utf-8', errors='ignore')[:2000]
+        # Works when running from inside the `api/` directory (e.g. some serverless runtimes).
+        from src.routers.quiz import router as quiz_router
+    except ImportError:
+        # Works when importing as a package from repo root (e.g. local tests).
+        from api.src.routers.quiz import router as quiz_router
 
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        prompt = f"Generate a 5-question multiple choice quiz in JSON format from this text: {text_context}"
-        
-        response = model.generate_content(
-            prompt, 
-            generation_config={"response_mime_type": "application/json"}
-        )
-        
-        return {"success": True, "quiz": json.loads(response.text)}
-    except Exception as e:
-        logger.error(f"Error generating quiz: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    # Register both route shapes to tolerate path prefix differences across
+    # local/dev runtimes and Vercel rewrites.
+    app.include_router(quiz_router, prefix="/quiz")
+    app.include_router(quiz_router, prefix="/api/quiz")
+    logger.info("Quiz router included successfully with /quiz and /api/quiz prefixes")
+except ImportError as e:
+    logger.error(f"Failed to import quiz router: {e}")
+
+# Test endpoints for debugging (both route shapes)
+@app.post("/quiz/test")
+@app.post("/api/quiz/test")
+async def test_quiz():
+    return {"message": "Quiz route is working", "timestamp": "2025-03-09"}
 
 # Root endpoint
 @app.get("/")
@@ -122,7 +111,7 @@ async def root():
     }
 
 # Health check endpoint - UPDATE PATH
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     return {
         "status": "healthy",
@@ -151,8 +140,8 @@ async def http_exception_handler(request, exc):
         content={"detail": exc.detail}
     )
 
-# Vercel handler - expose FastAPI app directly
-handler = app
+# Mangum handler for Vercel serverless - REMOVE api_gateway_base_path
+handler = Mangum(app, lifespan="off")
 
 # Local dev runner
 if __name__ == "__main__":
