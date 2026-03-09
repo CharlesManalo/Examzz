@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 import os
 import logging
 from dotenv import load_dotenv
+from src.routers.quiz import router as quiz_router
 
 # Load environment variables
 load_dotenv()
@@ -76,6 +77,9 @@ rate_limit = int(os.getenv("RATE_LIMIT_REQUESTS", "10"))
 rate_window = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
 app.add_middleware(SimpleRateLimitMiddleware, calls=rate_limit, period=rate_window)
 
+# Include the quiz router
+app.include_router(quiz_router, prefix="/api/quiz")
+
 # Simple health endpoint for testing
 @app.get("/api/health")
 async def health_check():
@@ -84,32 +88,6 @@ async def health_check():
         "environment": os.getenv("DEBUG", "False"),
         "gemini_configured": bool(os.getenv("GEMINI_API_KEY"))
     }
-
-@app.post("/api/quiz/generate")
-async def generate_quiz(file: UploadFile = File(...)):
-    try:
-        from google import generativeai as genai
-        import json
-        
-        # Configure Gemini
-        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        
-        # Read file content
-        content = await file.read()
-        text_context = content.decode('utf-8', errors='ignore')[:2000]
-
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        prompt = f"Generate a 5-question multiple choice quiz in JSON format from this text: {text_context}"
-        
-        response = model.generate_content(
-            prompt, 
-            generation_config={"response_mime_type": "application/json"}
-        )
-        
-        return {"success": True, "quiz": json.loads(response.text)}
-    except Exception as e:
-        logger.error(f"Error generating quiz: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 # Root endpoint
 @app.get("/")
