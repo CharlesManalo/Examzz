@@ -1,91 +1,23 @@
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 import os
-import logging
 import sys
-from dotenv import load_dotenv
-from google import generativeai as genai
-import tempfile
 import json
+import logging
+import tempfile
+from http.server import BaseHTTPRequestHandler
+from urllib.parse import parse_qs, urlparse
 
 # Fix import path for Vercel
 sys.path.insert(0, os.path.dirname(__file__))
-from src.routers.quiz import router as quiz_router
 
-# Load environment variables
+from dotenv import load_dotenv
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Create FastAPI app - REMOVE root_path
-app = FastAPI(
-    title="Examzz API",
-    description="API for quiz generation and document processing",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
-    # root_path="/api"  # REMOVED - Vercel handles this
-)
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://examzz.vercel.app",
-        "http://localhost:5173",
-        "http://localhost:3000",
-    ],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
-
-# Rate limiting middleware
-class SimpleRateLimitMiddleware:
-    def __init__(self, app, calls: int = 10, period: int = 60):
-        self.app = app
-        self.calls = calls
-        self.period = period
-        self.clients = {}
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] == "http":
-            client_ip = scope.get("client", ("unknown",))[0]
-            import time
-
-            now = time.time()
-            if client_ip not in self.clients:
-                self.clients[client_ip] = []
-
-            self.clients[client_ip] = [
-                timestamp for timestamp in self.clients[client_ip]
-                if now - timestamp < self.period
-            ]
-
-            if len(self.clients[client_ip]) >= self.calls:
-                response = JSONResponse(
-                    status_code=429,
-                    content={"detail": "Rate limit exceeded"}
-                )
-                await response(scope, receive, send)
-                return
-
-            self.clients[client_ip].append(now)
-
-        await self.app(scope, receive, send)
-
-rate_limit = int(os.getenv("RATE_LIMIT_REQUESTS", "10"))
-rate_window = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
-app.add_middleware(SimpleRateLimitMiddleware, calls=rate_limit, period=rate_window)
 
 # Configure Gemini
 try:
+    from google import generativeai as genai
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
     GEMINI_CONFIGURED = True
     logger.info("Gemini API configured successfully")
@@ -93,237 +25,224 @@ except Exception as e:
     GEMINI_CONFIGURED = False
     logger.error(f"Failed to configure Gemini API: {e}")
 
-# Quiz endpoints
-@app.post("/api/quiz/generate")
-async def generate_quiz(
-    file: UploadFile = File(...),
-    question_count: int = 10,
-    difficulty: str = "medium"
-):
-    """
-    Upload a file, extract text, generate quiz via Gemini, return JSON.
-    Full path on Vercel: POST /api/quiz/generate
-    """
-    try:
-        if not GEMINI_CONFIGURED:
-            raise HTTPException(
-                status_code=500,
-                detail="Gemini API not configured. Please check API key."
-            )
 
-        if not file.filename:
-            raise HTTPException(status_code=400, detail="No file provided")
+def generate_quiz_logic(content: bytes, filename: str, question_count: int = 10, difficulty: str = "medium"):
+    """Core quiz generation logic."""
+    extracted_text = content.decode('utf-8', errors='ignore')
 
-        if not 1 <= question_count <= 50:
-            raise HTTPException(
-                status_code=400,
-                detail="Question count must be between 1 and 50"
-            )
+    if not extracted_text:
+        raise ValueError("No text extracted from file.")
 
-        if difficulty not in ["easy", "medium", "hard"]:
-            raise HTTPException(
-                status_code=400,
-                detail="Difficulty must be one of: easy, medium, hard"
-            )
+    max_chars = 5000
+    if len(extracted_text) > max_chars:
+        extracted_text = extracted_text[:max_chars] + "..."
 
-        logger.info(f"Processing file: {file.filename}, questions: {question_count}")
-
-        # Read file content directly (simplified approach)
-        content = await file.read()
-        extracted_text = content.decode('utf-8', errors='ignore')
-        
-        # Trigger redeploy for Vercel
-        if not extracted_text:
-            raise ValueError("No text extracted from file.")
-
-        logger.info(f"Extracted {len(extracted_text)} characters from file")
-
-        max_chars = 5000
-        if len(extracted_text) > max_chars:
-            extracted_text = extracted_text[:max_chars] + "..."
-            logger.info(f"Text truncated to {max_chars} characters")
-
-        logger.info("Generating quiz with Gemini...")
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            generation_config={
-                "response_mime_type": "application/json",
-                "temperature": 0.7,
-                "max_output_tokens": 2048,
-            }
-        )
-
-        difficulty_prompts = {
-            "easy": "simple, straightforward questions that test basic understanding",
-            "medium": "moderately challenging questions that require some thinking",
-            "hard": "complex questions that require deep understanding and analysis"
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        generation_config={
+            "response_mime_type": "application/json",
+            "temperature": 0.7,
+            "max_output_tokens": 2048,
         }
+    )
 
-        prompt = f"""
-        Act as a professional educator. Based on the following lesson text, generate a {question_count}-question multiple choice quiz.
+    difficulty_prompts = {
+        "easy": "simple, straightforward questions that test basic understanding",
+        "medium": "moderately challenging questions that require some thinking",
+        "hard": "complex questions that require deep understanding and analysis"
+    }
 
-        Requirements:
-        - Create {difficulty_prompts.get(difficulty, "moderately challenging")} questions
-        - Each question must have exactly 4 options (A, B, C, D)
-        - Only one option should be correct
-        - Questions should cover different aspects of the text
-        - Avoid true/false questions
-        - Make questions clear and unambiguous
+    prompt = f"""
+    Act as a professional educator. Based on the following lesson text, generate a {question_count}-question multiple choice quiz.
 
-        Return the output strictly as a JSON array with this exact structure:
-        [
-            {{
-                "question": "The question text here",
-                "options": ["Option A", "Option B", "Option C", "Option D"],
-                "answer_index": 0,
-                "explanation": "Brief explanation of why this answer is correct"
-            }}
-        ]
+    Requirements:
+    - Create {difficulty_prompts.get(difficulty, "moderately challenging")} questions
+    - Each question must have exactly 4 options (A, B, C, D)
+    - Only one option should be correct
+    - Questions should cover different aspects of the text
+    - Avoid true/false questions
+    - Make questions clear and unambiguous
 
-        Do not include any text outside the JSON array. The response must be valid JSON.
+    Return the output strictly as a JSON array with this exact structure:
+    [
+        {{
+            "question": "The question text here",
+            "options": ["Option A", "Option B", "Option C", "Option D"],
+            "answer_index": 0,
+            "explanation": "Brief explanation of why this answer is correct"
+        }}
+    ]
 
-        Lesson text:
-        {extracted_text}
-        """
+    Do not include any text outside the JSON array. The response must be valid JSON.
 
-        response = model.generate_content(prompt)
+    Lesson text:
+    {extracted_text}
+    """
 
-        if not response.text:
-            raise ValueError("Empty response from Gemini.")
+    response = model.generate_content(prompt)
 
-        logger.info(f"Received response from Gemini: {len(response.text)} characters")
+    if not response.text:
+        raise ValueError("Empty response from Gemini.")
 
+    quiz_data = json.loads(response.text)
+
+    if not isinstance(quiz_data, list):
+        raise ValueError("Response is not a JSON array")
+
+    return {
+        "success": True,
+        "quiz": quiz_data,
+        "metadata": {
+            "file_name": filename,
+            "file_size": len(content),
+            "extracted_chars": len(extracted_text),
+            "question_count": len(quiz_data),
+            "difficulty": difficulty,
+            "model_used": "gemini-1.5-flash"
+        }
+    }
+
+
+class handler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self._send_cors_headers()
+        self.end_headers()
+
+    def do_GET(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        if path in ("/api/health", "/api/quiz/health"):
+            self._json_response(200, {
+                "status": "healthy",
+                "gemini_configured": GEMINI_CONFIGURED,
+                "version": "1.0.0"
+            })
+        else:
+            self._json_response(404, {"detail": "Not found"})
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        if path == "/api/quiz/generate":
+            self._handle_generate()
+        elif path == "/api/quiz/test-gemini":
+            self._handle_test_gemini()
+        else:
+            self._json_response(404, {"detail": "Not found"})
+
+    def _handle_generate(self):
         try:
-            quiz_data = json.loads(response.text)
+            if not GEMINI_CONFIGURED:
+                self._json_response(500, {"detail": "Gemini API not configured"})
+                return
 
-            if not isinstance(quiz_data, list):
-                raise ValueError("Response is not a JSON array")
+            content_type = self.headers.get('Content-Type', '')
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
 
-            for i, question in enumerate(quiz_data):
-                if not isinstance(question, dict):
-                    raise ValueError(f"Question {i} is not an object")
+            # Parse multipart form data
+            if 'multipart/form-data' not in content_type:
+                self._json_response(400, {"detail": "Expected multipart/form-data"})
+                return
 
-                required_keys = ["question", "options", "answer_index", "explanation"]
-                for key in required_keys:
-                    if key not in question:
-                        raise ValueError(f"Question {i} missing required key: {key}")
+            # Extract boundary
+            boundary = None
+            for part in content_type.split(';'):
+                part = part.strip()
+                if part.startswith('boundary='):
+                    boundary = part[9:].strip()
+                    break
 
-                if not isinstance(question["options"], list) or len(question["options"]) != 4:
-                    raise ValueError(f"Question {i} must have exactly 4 options")
+            if not boundary:
+                self._json_response(400, {"detail": "No boundary in multipart data"})
+                return
 
-                if not isinstance(question["answer_index"], int) or not 0 <= question["answer_index"] <= 3:
-                    raise ValueError(f"Question {i} has invalid answer_index")
+            # Parse multipart
+            fields, files = self._parse_multipart(body, boundary.encode())
 
-            logger.info(f"Successfully validated {len(quiz_data)} questions")
+            if 'file' not in files:
+                self._json_response(400, {"detail": "No file provided"})
+                return
 
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse Gemini response as JSON: {e}")
-            raise ValueError("Invalid JSON response from Gemini")
+            file_content = files['file']['content']
+            filename = files['file'].get('filename', 'upload.txt')
+            question_count = int(fields.get('question_count', '10'))
+            difficulty = fields.get('difficulty', 'medium')
 
-        result = {
-            "success": True,
-            "quiz": quiz_data,
-            "metadata": {
-                "file_name": file.filename,
-                "file_size": len(content),
-                "extracted_chars": len(extracted_text),
-                "question_count": len(quiz_data),
-                "difficulty": difficulty,
-                "model_used": "gemini-1.5-flash"
-            }
-        }
+            result = generate_quiz_logic(file_content, filename, question_count, difficulty)
+            self._json_response(200, result)
 
-        logger.info("Quiz generation completed successfully")
-        return result
+        except Exception as e:
+            logger.error(f"Generate failed: {e}")
+            self._json_response(500, {"detail": str(e)})
 
-    except ValueError as ve:
-        logger.error(f"Validation error: {ve}")
-        raise HTTPException(status_code=400, detail=str(ve))
+    def _handle_test_gemini(self):
+        try:
+            if not GEMINI_CONFIGURED:
+                self._json_response(500, {"detail": "Gemini API not configured"})
+                return
+            model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+            response = model.generate_content("Hello! Please respond with 'Gemini is working.'")
+            self._json_response(200, {"success": True, "response": response.text})
+        except Exception as e:
+            self._json_response(500, {"detail": str(e)})
 
-    except Exception as e:
-        logger.error(f"Quiz generation failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Quiz generation failed: {str(e)}")
+    def _parse_multipart(self, body: bytes, boundary: bytes):
+        fields = {}
+        files = {}
+        delimiter = b'--' + boundary
+        parts = body.split(delimiter)
 
-@app.get("/api/quiz/health")
-async def quiz_health_check():
-    return {
-        "status": "healthy",
-        "gemini_configured": GEMINI_CONFIGURED,
-        "version": "1.0.0"
-    }
+        for part in parts[1:]:
+            if part in (b'--\r\n', b'--', b'\r\n'):
+                continue
+            if part.startswith(b'--'):
+                continue
 
-@app.post("/api/quiz/test-gemini")
-async def test_gemini():
-    if not GEMINI_CONFIGURED:
-        raise HTTPException(status_code=500, detail="Gemini API not configured")
+            if b'\r\n\r\n' not in part:
+                continue
 
-    try:
-        model = genai.GenerativeModel(model_name="gemini-1.5-flash")
-        response = model.generate_content("Hello! Please respond with 'Gemini is working.'")
+            headers_raw, content = part.split(b'\r\n\r\n', 1)
+            # Strip trailing \r\n
+            if content.endswith(b'\r\n'):
+                content = content[:-2]
 
-        return {
-            "success": True,
-            "response": response.text,
-            "status": "Gemini API is working correctly"
-        }
+            headers_str = headers_raw.decode('utf-8', errors='ignore')
+            disposition = {}
+            for line in headers_str.split('\r\n'):
+                if 'Content-Disposition' in line:
+                    for item in line.split(';'):
+                        item = item.strip()
+                        if '=' in item:
+                            k, v = item.split('=', 1)
+                            disposition[k.strip()] = v.strip().strip('"')
 
-    except Exception as e:
-        logger.error(f"Gemini test failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Gemini API test failed: {str(e)}")
+            name = disposition.get('name', '')
+            filename = disposition.get('filename', '')
 
-# Simple health endpoint for testing
-@app.get("/api/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "environment": os.getenv("DEBUG", "False"),
-        "gemini_configured": bool(os.getenv("GEMINI_API_KEY"))
-    }
+            if filename:
+                files[name] = {'content': content, 'filename': filename}
+            else:
+                fields[name] = content.decode('utf-8', errors='ignore')
 
-# Root endpoint
-@app.get("/")
-async def root():
-    return {
-        "message": "Examzz API is running",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "health": "/health"
-    }
+        return fields, files
 
+    def _json_response(self, status: int, data: dict):
+        body = json.dumps(data).encode()
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(body)))
+        self._send_cors_headers()
+        self.end_headers()
+        self.wfile.write(body)
 
-# Global exception handler
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    logger.error(f"Unhandled exception: {exc}")
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error"}
-    )
+    def _send_cors_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
 
-# HTTP exception handler
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail}
-    )
-
-from mangum import Mangum
-handler = Mangum(app, lifespan="off")
-
-# Local dev runner
-if __name__ == "__main__":
-    import uvicorn
-
-    host = os.getenv("HOST", "0.0.0.0")
-    port = int(os.getenv("PORT", "8000"))
-    debug = os.getenv("DEBUG", "False").lower() == "true"
-
-    logger.info(f"Starting Examzz API on {host}:{port}")
-    uvicorn.run(
-        "main:app",
-        host=host,
-        port=port,
-        reload=debug,
-        log_level="info"
-    )
+    def log_message(self, format, *args):
+        logger.info(f"{self.address_string()} - {format % args}")

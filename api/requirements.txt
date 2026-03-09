@@ -1,11 +1,2 @@
-fastapi
-uvicorn
-python-multipart
-pdfplumber
-python-docx
-openpyxl
-python-pptx
-PyMuPDF
 google-generativeai
 python-dotenv
-mangum
