@@ -4,7 +4,9 @@
     {
       "src": "app/package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "config": {
+        "distDir": "dist"
+      }
     },
     {
       "src": "api/main.py",
@@ -13,7 +15,6 @@
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/main.py" },
-    { "source": "/(.*)", "destination": "/app/index.html" }
-  ],
-  "outputDirectory": "app/dist"
+    { "source": "/(.*)", "destination": "/app/$1" }
+  ]
 }
