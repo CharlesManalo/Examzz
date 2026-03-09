@@ -2,7 +2,7 @@ import axios from "axios";
 
 // API Configuration
 const API_BASE_URL = import.meta.env.PROD
-  ? "https://your-vercel-app.vercel.app" // Update with your Vercel URL
+  ? "https://examzz.vercel.app" // Same domain as frontend, will be routed to backend
   : "http://localhost:8000";
 
 // Create axios instance
