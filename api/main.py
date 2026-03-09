@@ -126,7 +126,8 @@ async def generate_quiz(
         # Read file content directly (simplified approach)
         content = await file.read()
         extracted_text = content.decode('utf-8', errors='ignore')
-
+        
+        # Trigger redeploy for Vercel
         if not extracted_text:
             raise ValueError("No text extracted from file.")
 
