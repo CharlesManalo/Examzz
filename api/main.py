@@ -17,6 +17,12 @@ logger = logging.getLogger(__name__)
 # ── Providers (tried in order) ────────────────────────────────────────────────
 PROVIDERS = [
     {
+        "name": "Hugging Face",
+        "api_key_env": "HF_TOKEN",
+        "type": "huggingface",
+        "model": "Qwen/Qwen2.5-7B-Instruct",
+    },
+    {
         "name": "Gemini",
         "api_key_env": "GEMINI_API_KEY",
         "type": "gemini",
@@ -83,6 +89,24 @@ def call_gemini(provider: dict, prompt: str) -> str:
     return response.text
 
 
+def call_huggingface(provider: dict, prompt: str) -> str:
+    from huggingface_hub import InferenceClient
+    
+    client = InferenceClient(api_key=provider["api_key"])
+    
+    response = client.chat.completions.create(
+        model=provider["model"],
+        messages=[
+            {"role": "system", "content": "You are a professional educator. Always respond with valid JSON only, no markdown."},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=2048,
+        stream=False
+    )
+    
+    return response.choices[0].message.content
+
+
 def call_openai_compat(provider: dict, prompt: str) -> str:
     payload = json.dumps({
         "model": provider["model"],
@@ -119,7 +143,12 @@ def generate_with_fallback(prompt: str) -> tuple:
         try:
             logger.info(f"Trying provider: {provider['name']}")
             p = {**provider, "api_key": api_key}
-            text = call_gemini(p, prompt) if provider["type"] == "gemini" else call_openai_compat(p, prompt)
+            if provider["type"] == "gemini":
+                text = call_gemini(p, prompt)
+            elif provider["type"] == "huggingface":
+                text = call_huggingface(p, prompt)
+            else:
+                text = call_openai_compat(p, prompt)
             logger.info(f"Success with provider: {provider['name']}")
             return text, provider["name"]
         except Exception as e:
