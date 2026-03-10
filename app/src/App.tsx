@@ -160,7 +160,7 @@ function App() {
 
       case "upload":
         return currentUser ? (
-          <QuizUpload />
+          <QuizUpload onStartQuiz={startQuiz} onNavigate={navigateTo} />
         ) : (
           <Login onNavigate={navigateTo} onLogin={handleLogin} />
         );

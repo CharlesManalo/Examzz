@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -20,6 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { quizAPI } from "@/lib/api";
+import { createQuiz, createQuestions, incrementUsage } from '@/services/supabase';
+import { getCurrentUser } from '@/services/supabase';
+import type { Quiz, Question, View } from '@/types';
 
 interface QuizQuestion {
   question: string;
@@ -37,16 +39,13 @@ interface QuizMetadata {
   model_used: string;
 }
 
-interface QuizResponse {
-  success: boolean;
-  quiz: QuizQuestion[];
-  metadata: QuizMetadata;
+interface QuizUploadProps {
+  onStartQuiz: (quiz: Quiz, questions: Question[]) => void;
+  onNavigate: (view: View) => void;
 }
 
-const QuizUpload = () => {
+const QuizUpload = ({ onStartQuiz, onNavigate }: QuizUploadProps) => {
   const [file, setFile] = useState<File | null>(null);
-  const [quiz, setQuiz] = useState<QuizQuestion[]>([]);
-  const [metadata, setMetadata] = useState<QuizMetadata | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [questionCount, setQuestionCount] = useState("10");
@@ -54,29 +53,8 @@ const QuizUpload = () => {
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
-      const selectedFile = acceptedFiles[0];
-      const maxSize = 10 * 1024 * 1024; // 10MB
-      const allowedTypes = [
-        "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      ];
-
-      if (selectedFile.size > maxSize) {
-        toast.error("File size must be less than 10MB");
-        return;
-      }
-
-      if (!allowedTypes.includes(selectedFile.type)) {
-        toast.error("Please upload a PDF, Word, PowerPoint, or Excel file");
-        return;
-      }
-
-      setFile(selectedFile);
-      setQuiz([]);
-      setMetadata(null);
-      toast.success("File uploaded successfully");
+      setFile(acceptedFiles[0]);
+      setProgress(0);
     }
   }, []);
 
@@ -84,13 +62,9 @@ const QuizUpload = () => {
     onDrop,
     accept: {
       "application/pdf": [".pdf"],
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        [".docx"],
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-        [".pptx"],
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
-        ".xlsx",
-      ],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
+      "text/plain": [".txt"],
     },
     multiple: false,
   });
@@ -121,9 +95,34 @@ const QuizUpload = () => {
       setProgress(100);
 
       if (response.data.success) {
-        setQuiz(response.data.quiz);
-        setMetadata(response.data.metadata);
-        toast.success(`Generated ${response.data.quiz.length} quiz questions!`);
+        const user = await getCurrentUser();
+        if (!user) throw new Error('Not authenticated');
+
+        // Save quiz to Supabase
+        const savedQuiz = await createQuiz({
+          userId: user.id,
+          quizType: 'quiz',
+          title: file.name.replace(/\.[^/.]+$/, ''),
+          totalQuestions: response.data.quiz.length,
+          fileIds: []
+        });
+
+        // Save questions to Supabase
+        const savedQuestions = await createQuestions(
+          response.data.quiz.map((q: any) => ({
+            quizId: savedQuiz.id,
+            question: q.question,
+            options: q.options,
+            correctAnswer: q.answer_index,
+            questionType: 'multiple-choice' as const,
+            explanation: q.explanation
+          }))
+        );
+
+        await incrementUsage(user.id, 'quiz');
+
+        toast.success(`Generated ${savedQuestions.length} questions!`);
+        onStartQuiz(savedQuiz, savedQuestions);  // hands off to Exam
       } else {
         toast.error("Failed to generate quiz");
       }
@@ -146,16 +145,8 @@ const QuizUpload = () => {
 
   const resetQuiz = () => {
     setFile(null);
-    setQuiz([]);
-    setMetadata(null);
     setProgress(0);
   };
-
-  if (quiz.length > 0) {
-    return (
-      <QuizComponent questions={quiz} metadata={metadata} onReset={resetQuiz} />
-    );
-  }
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
@@ -166,7 +157,7 @@ const QuizUpload = () => {
             Generate Quiz from Document
           </CardTitle>
           <CardDescription>
-            Upload a PDF, Word, PowerPoint, or Excel file to generate an
+            Upload a PDF, Word, PowerPoint, or text file to generate an
             AI-powered quiz
           </CardDescription>
         </CardHeader>
@@ -176,43 +167,45 @@ const QuizUpload = () => {
             {...getRootProps()}
             className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
               isDragActive
-                ? "border-primary bg-primary/10"
+                ? "border-blue-400 bg-blue-50"
                 : "border-gray-300 hover:border-gray-400"
             }`}
           >
             <input {...getInputProps()} />
-            <div className="space-y-4">
-              <Upload className="h-12 w-12 mx-auto text-gray-400" />
+            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            {isDragActive ? (
+              <p className="text-blue-600">Drop the file here...</p>
+            ) : (
               <div>
-                <p className="text-lg font-medium">
-                  {isDragActive
-                    ? "Drop the file here"
-                    : "Click to upload or drag and drop"}
+                <p className="text-gray-600 mb-2">
+                  Drag & drop a document here, or click to select
                 </p>
-                <p className="text-sm text-gray-500">
-                  PDF, Word, PowerPoint, or Excel (MAX. 10MB)
+                <p className="text-sm text-gray-400">
+                  Supports PDF, DOCX, PPTX, and TXT files
                 </p>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Selected File */}
+          {/* File Info */}
           {file && (
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <FileText className="h-5 w-5 text-blue-500" />
-              <div className="flex-1">
-                <p className="font-medium">{file.name}</p>
-                <p className="text-sm text-gray-500">
-                  {(file.size / 1024 / 1024).toFixed(2)} MB
-                </p>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-sm">{file.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setFile(null)}>
+              <Button variant="ghost" size="sm" onClick={resetQuiz}>
                 Remove
               </Button>
             </div>
           )}
 
-          {/* Quiz Options */}
+          {/* Settings */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Number of Questions</label>
@@ -221,9 +214,9 @@ const QuizUpload = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="10">10 Questions (Quiz)</SelectItem>
-                  <SelectItem value="25">25 Questions (Mock Exam)</SelectItem>
-                  <SelectItem value="50">50 Questions (Exam)</SelectItem>
+                  <SelectItem value="10">10 Questions</SelectItem>
+                  <SelectItem value="25">25 Questions</SelectItem>
+                  <SelectItem value="50">50 Questions</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -245,9 +238,9 @@ const QuizUpload = () => {
           {/* Progress */}
           {loading && (
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Generating quiz...</span>
+              <div className="flex justify-between text-sm">
+                <span>Generating quiz...</span>
+                <span>{progress}%</span>
               </div>
               <Progress value={progress} className="w-full" />
             </div>
@@ -272,172 +265,6 @@ const QuizUpload = () => {
               </>
             )}
           </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-// Quiz Component (embedded for now)
-const QuizComponent = ({
-  questions,
-  metadata,
-  onReset,
-}: {
-  questions: QuizQuestion[];
-  metadata: QuizMetadata | null;
-  onReset: () => void;
-}) => {
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
-  const [showResults, setShowResults] = useState(false);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-
-  const handleAnswer = (answerIndex: number) => {
-    setSelectedAnswer(answerIndex);
-    const newAnswers = [...answers, answerIndex];
-    setAnswers(newAnswers);
-
-    setTimeout(() => {
-      if (currentQuestion < questions.length - 1) {
-        setCurrentQuestion(currentQuestion + 1);
-        setSelectedAnswer(null);
-      } else {
-        setShowResults(true);
-      }
-    }, 500);
-  };
-
-  const calculateScore = () => {
-    return answers.reduce((correct, answer, index) => {
-      return correct + (answer === questions[index].answer_index ? 1 : 0);
-    }, 0);
-  };
-
-  const resetQuiz = () => {
-    setCurrentQuestion(0);
-    setAnswers([]);
-    setShowResults(false);
-    setSelectedAnswer(null);
-    onReset();
-  };
-
-  if (showResults) {
-    const score = calculateScore();
-    const percentage = Math.round((score / questions.length) * 100);
-
-    return (
-      <div className="max-w-2xl mx-auto p-6 space-y-6">
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Quiz Complete!</CardTitle>
-            <CardDescription>Here are your results</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="text-center space-y-4">
-              <div className="text-6xl font-bold text-primary">
-                {percentage}%
-              </div>
-              <div className="text-lg">
-                You got {score} out of {questions.length} questions correct
-              </div>
-              <Badge
-                variant={percentage >= 70 ? "default" : "secondary"}
-                className="text-lg px-4 py-2"
-              >
-                {percentage >= 90
-                  ? "Excellent!"
-                  : percentage >= 70
-                    ? "Good Job!"
-                    : "Keep Practicing!"}
-              </Badge>
-            </div>
-
-            {metadata && (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-medium mb-2">Quiz Information</h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>File: {metadata.file_name}</div>
-                  <div>Questions: {metadata.question_count}</div>
-                  <div>Difficulty: {metadata.difficulty}</div>
-                  <div>Model: {metadata.model_used}</div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <Button onClick={resetQuiz} className="flex-1">
-                Generate New Quiz
-              </Button>
-              <Button variant="outline" onClick={() => setShowResults(false)}>
-                Review Answers
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const question = questions[currentQuestion];
-  const progress = ((currentQuestion + 1) / questions.length) * 100;
-
-  return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
-      {/* Progress */}
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
-          <span>
-            Question {currentQuestion + 1} of {questions.length}
-          </span>
-          <span>{Math.round(progress)}% Complete</span>
-        </div>
-        <Progress value={progress} />
-      </div>
-
-      {/* Question Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">{question.question}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {question.options.map((option, index) => (
-            <Button
-              key={index}
-              variant={selectedAnswer === index ? "default" : "outline"}
-              className={`w-full justify-start text-left h-auto p-4 ${
-                selectedAnswer === index
-                  ? index === question.answer_index
-                    ? "bg-green-500 hover:bg-green-600"
-                    : "bg-red-500 hover:bg-red-600"
-                  : ""
-              }`}
-              onClick={() => handleAnswer(index)}
-              disabled={selectedAnswer !== null}
-            >
-              <span className="flex items-center gap-3">
-                <span className="font-medium">
-                  {String.fromCharCode(65 + index)}.
-                </span>
-                <span>{option}</span>
-                {selectedAnswer === index &&
-                  index === question.answer_index && (
-                    <span className="ml-auto text-green-600">✓ Correct</span>
-                  )}
-                {selectedAnswer === index &&
-                  index !== question.answer_index && (
-                    <span className="ml-auto text-red-600">✗ Incorrect</span>
-                  )}
-              </span>
-            </Button>
-          ))}
-
-          {selectedAnswer !== null && (
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm font-medium text-blue-800">Explanation:</p>
-              <p className="text-sm text-blue-700">{question.explanation}</p>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
