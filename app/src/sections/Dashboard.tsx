@@ -21,7 +21,6 @@ import {
   BookOpen,
   Zap,
   Target,
-  ChevronRight,
   Star,
 } from "lucide-react";
 
@@ -32,7 +31,12 @@ interface DashboardProps {
   onStartQuiz: (quiz: Quiz, questions: Question[]) => void;
 }
 
-const Dashboard = ({ onNavigate, user, onStartQuiz }: DashboardProps) => {
+const Dashboard = ({
+  onNavigate,
+  user,
+  onLogout,
+  onStartQuiz,
+}: DashboardProps) => {
   const [stats, setStats] = useState({
     totalQuizzes: 0,
     averageScore: 0,
@@ -47,7 +51,7 @@ const Dashboard = ({ onNavigate, user, onStartQuiz }: DashboardProps) => {
     const fetchStats = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch user's quizzes and results
         const [quizzes, results] = await Promise.all([
           getQuizzesByUserId(user.id),
@@ -58,20 +62,25 @@ const Dashboard = ({ onNavigate, user, onStartQuiz }: DashboardProps) => {
         setRecentResults(results.slice(0, 3));
 
         // Calculate stats
-        const avgScore = results.length > 0
-          ? Math.round(
-              results.reduce((sum, r) => sum + r.score, 0) / results.length
-            )
-          : 0;
+        const avgScore =
+          results.length > 0
+            ? Math.round(
+                results.reduce((sum, r) => sum + r.score, 0) / results.length,
+              )
+            : 0;
 
         // Calculate questions from last month
         const thisMonth = results.filter(
-          (r) => new Date(r.createdAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          (r) =>
+            new Date(r.completedAt) >
+            new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
         );
 
         // Calculate recent week activity
         const recentWeek = results.filter(
-          (r) => new Date(r.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          (r) =>
+            new Date(r.completedAt) >
+            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         );
 
         setStats({
@@ -171,8 +180,9 @@ const Dashboard = ({ onNavigate, user, onStartQuiz }: DashboardProps) => {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+    if (diffHours > 0)
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
     return "Just now";
   };
 
@@ -306,7 +316,10 @@ const Dashboard = ({ onNavigate, user, onStartQuiz }: DashboardProps) => {
                         {loading ? "..." : stats.averageScore}%
                       </span>
                     </div>
-                    <Progress value={loading ? 0 : stats.averageScore} className="h-2" />
+                    <Progress
+                      value={loading ? 0 : stats.averageScore}
+                      className="h-2"
+                    />
                   </div>
                   <div className="grid grid-cols-3 gap-4 pt-4">
                     <div className="text-center p-4 bg-violet-50 rounded-xl">
@@ -318,7 +331,9 @@ const Dashboard = ({ onNavigate, user, onStartQuiz }: DashboardProps) => {
                     </div>
                     <div className="text-center p-4 bg-blue-50 rounded-xl">
                       <Brain className="h-5 w-5 text-blue-600 mx-auto mb-2" />
-                      <p className="text-2xl font-bold">{loading ? "..." : stats.totalQuizzes}</p>
+                      <p className="text-2xl font-bold">
+                        {loading ? "..." : stats.totalQuizzes}
+                      </p>
                       <p className="text-xs text-muted-foreground">Quizzes</p>
                     </div>
                     <div className="text-center p-4 bg-green-50 rounded-xl">
@@ -340,8 +355,8 @@ const Dashboard = ({ onNavigate, user, onStartQuiz }: DashboardProps) => {
                     <Zap className="h-5 w-5 text-violet-600" />
                     Recent Quizzes
                   </CardTitle>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     onClick={() => onNavigate("upload")}
                   >
@@ -422,28 +437,39 @@ const Dashboard = ({ onNavigate, user, onStartQuiz }: DashboardProps) => {
                         className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
-                            result.score >= 80 ? 'bg-green-100' : 
-                            result.score >= 60 ? 'bg-yellow-100' : 'bg-red-100'
-                          }`}>
-                            <Trophy className={`h-4 w-4 ${
-                              result.score >= 80 ? 'text-green-600' : 
-                              result.score >= 60 ? 'text-yellow-600' : 'text-red-600'
-                            }`} />
+                          <div
+                            className={`h-8 w-8 rounded-lg flex items-center justify-center ${
+                              result.score >= 80
+                                ? "bg-green-100"
+                                : result.score >= 60
+                                  ? "bg-yellow-100"
+                                  : "bg-red-100"
+                            }`}
+                          >
+                            <Trophy
+                              className={`h-4 w-4 ${
+                                result.score >= 80
+                                  ? "text-green-600"
+                                  : result.score >= 60
+                                    ? "text-yellow-600"
+                                    : "text-red-600"
+                              }`}
+                            />
                           </div>
                           <div>
                             <p className="text-sm font-medium">
                               {result.quizId?.substring(0, 8)}...
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {formatTimeAgo(result.createdAt)}
+                              {formatTimeAgo(result.completedAt)}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-bold">{result.score}%</p>
                           <p className="text-xs text-muted-foreground">
-                            {result.correctAnswers}/{result.correctAnswers + result.wrongAnswers}
+                            {result.correctAnswers}/
+                            {result.correctAnswers + result.wrongAnswers}
                           </p>
                         </div>
                       </div>
@@ -451,7 +477,9 @@ const Dashboard = ({ onNavigate, user, onStartQuiz }: DashboardProps) => {
                   </div>
                 ) : (
                   <div className="text-center py-6">
-                    <p className="text-muted-foreground text-sm">No recent activity</p>
+                    <p className="text-muted-foreground text-sm">
+                      No recent activity
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -468,20 +496,24 @@ const Dashboard = ({ onNavigate, user, onStartQuiz }: DashboardProps) => {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Questions This Month</span>
-                    <span className="font-semibold">{loading ? "..." : stats.totalQuestions}</span>
+                    <span className="font-semibold">
+                      {loading ? "..." : stats.totalQuestions}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Quizzes This Week</span>
-                    <span className="font-semibold">{loading ? "..." : stats.recentActivity}</span>
+                    <span className="font-semibold">
+                      {loading ? "..." : stats.recentActivity}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Best Score</span>
                     <span className="font-semibold">
-                      {loading ? "..." : (
-                        recentResults.length > 0 
-                          ? Math.max(...recentResults.map(r => r.score)) + '%'
-                          : 'N/A'
-                      )}
+                      {loading
+                        ? "..."
+                        : recentResults.length > 0
+                          ? Math.max(...recentResults.map((r) => r.score)) + "%"
+                          : "N/A"}
                     </span>
                   </div>
                 </div>
