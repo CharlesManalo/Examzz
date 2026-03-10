@@ -146,6 +146,24 @@ def extract_retry_delay(error_str: str) -> int:
     return int(match.group(1)) if match else 0
 
 
+def extract_text_from_file(content: bytes, filename: str) -> str:
+    """Extract readable text from PDF or plain text files."""
+    if filename.lower().endswith(".pdf"):
+        try:
+            import pypdf
+            import io
+            reader = pypdf.PdfReader(io.BytesIO(content))
+            text = ""
+            for page in reader.pages:
+                text += page.extract_text() or ""
+            return text
+        except Exception as e:
+            logger.warning(f"PDF extraction failed: {e}")
+            return content.decode("utf-8", errors="ignore")
+    else:
+        return content.decode("utf-8", errors="ignore")
+
+
 def generate_with_fallback(prompt: str) -> tuple:
     """Try each provider in order. Returns (response_text, provider_name)."""
     last_error = None
@@ -189,7 +207,7 @@ def generate_with_fallback(prompt: str) -> tuple:
 
 
 def generate_quiz_logic(content: bytes, filename: str, question_count: int = 10, difficulty: str = "medium"):
-    extracted_text = content.decode("utf-8", errors="ignore")
+    extracted_text = extract_text_from_file(content, filename)
 
     if not extracted_text.strip():
         raise ValueError("No text extracted from file.")
