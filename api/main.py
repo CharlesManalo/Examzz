@@ -3,6 +3,7 @@ import sys
 import json
 import logging
 import time
+import re
 import urllib.request
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse
@@ -24,6 +25,12 @@ PROVIDERS = [
         "model": "gemini-2.0-flash",
     },
     {
+        "name": "Gemini-1.5",
+        "api_key_env": "GEMINI_API_KEY",
+        "type": "gemini",
+        "model": "gemini-1.5-flash",
+    },
+    {
         "name": "Groq",
         "api_key_env": "GROQ_API_KEY",
         "type": "openai_compat",
@@ -35,7 +42,7 @@ PROVIDERS = [
         "api_key_env": "OPENROUTER_API_KEY",
         "type": "openai_compat",
         "base_url": "https://openrouter.ai/api/v1",
-        "model": "meta-llama/llama-3.2-3b-instruct:free",
+        "model": "mistralai/mistral-7b-instruct:free",
     },
     {
         "name": "Hugging Face",
@@ -133,6 +140,12 @@ def call_openai_compat(provider: dict, prompt: str) -> str:
         return data["choices"][0]["message"]["content"]
 
 
+def extract_retry_delay(error_str: str) -> int:
+    """Extract retry delay from error message, default 0."""
+    match = re.search(r'retry in (\d+)', error_str, re.IGNORECASE)
+    return int(match.group(1)) if match else 0
+
+
 def generate_with_fallback(prompt: str) -> tuple:
     """Try each provider in order. Returns (response_text, provider_name)."""
     last_error = None
@@ -141,7 +154,7 @@ def generate_with_fallback(prompt: str) -> tuple:
         if not api_key:
             logger.info(f"Skipping {provider['name']} — no API key set")
             continue
-        for attempt in range(2):  # retry once on 429
+        for attempt in range(2):
             try:
                 logger.info(f"Trying provider: {provider['name']}")
                 p = {**provider, "api_key": api_key}
@@ -155,9 +168,19 @@ def generate_with_fallback(prompt: str) -> tuple:
                 return text, provider["name"]
             except Exception as e:
                 err_str = str(e)
-                if "429" in err_str and attempt == 0:
-                    logger.warning(f"{provider['name']} rate limited, waiting 2s...")
-                    time.sleep(2)  # wait before retry
+                is_rate_limit = "429" in err_str
+                retry_delay = extract_retry_delay(err_str)
+
+                if is_rate_limit and attempt == 0:
+                    # If retry delay is too long (>10s), skip provider entirely
+                    if retry_delay > 10:
+                        logger.warning(f"{provider['name']} quota exhausted, retry in {retry_delay}s — skipping")
+                        last_error = e
+                        break  # don't wait, move to next provider
+                    else:
+                        wait = max(retry_delay, 3)
+                        logger.warning(f"{provider['name']} rate limited, waiting {wait}s...")
+                        time.sleep(wait)
                 else:
                     logger.warning(f"{provider['name']} failed: {e}")
                     last_error = e
