@@ -27,14 +27,14 @@ PROVIDERS = [
         "api_key_env": "GROQ_API_KEY",
         "type": "openai_compat",
         "base_url": "https://api.groq.com/openai/v1",
-        "model": "llama-3.3-70b-versatile",
+        "model": "moonshotai/kimi-k2-instruct-0905",
     },
     {
         "name": "OpenRouter",
         "api_key_env": "OPENROUTER_API_KEY",
         "type": "openai_compat",
         "base_url": "https://openrouter.ai/api/v1",
-        "model": "mistralai/mistral-7b-instruct:free",
+        "model": "meta-llama/llama-3.2-3b-instruct:free",
     },
 ]
 
