@@ -179,7 +179,7 @@ const Exam = ({ quiz, questions, onFinish }: ExamProps) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-white py-8">
-      <div className="container max-w-3xl">
+      <div className="container max-w-3xl mx-auto px-4">
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
