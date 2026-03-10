@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import logging
+import time
 import urllib.request
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse
@@ -17,12 +18,6 @@ logger = logging.getLogger(__name__)
 # ── Providers (tried in order) ────────────────────────────────────────────────
 PROVIDERS = [
     {
-        "name": "Hugging Face",
-        "api_key_env": "HF_TOKEN",
-        "type": "huggingface",
-        "model": "Qwen/Qwen2.5-7B-Instruct",
-    },
-    {
         "name": "Gemini",
         "api_key_env": "GEMINI_API_KEY",
         "type": "gemini",
@@ -33,7 +28,7 @@ PROVIDERS = [
         "api_key_env": "GROQ_API_KEY",
         "type": "openai_compat",
         "base_url": "https://api.groq.com/openai/v1",
-        "model": "moonshotai/kimi-k2-instruct-0905",
+        "model": "llama-3.3-70b-versatile",
     },
     {
         "name": "OpenRouter",
@@ -41,6 +36,12 @@ PROVIDERS = [
         "type": "openai_compat",
         "base_url": "https://openrouter.ai/api/v1",
         "model": "meta-llama/llama-3.2-3b-instruct:free",
+    },
+    {
+        "name": "Hugging Face",
+        "api_key_env": "HF_TOKEN",
+        "type": "huggingface",
+        "model": "Qwen/Qwen2.5-7B-Instruct",
     },
 ]
 
@@ -140,21 +141,27 @@ def generate_with_fallback(prompt: str) -> tuple:
         if not api_key:
             logger.info(f"Skipping {provider['name']} — no API key set")
             continue
-        try:
-            logger.info(f"Trying provider: {provider['name']}")
-            p = {**provider, "api_key": api_key}
-            if provider["type"] == "gemini":
-                text = call_gemini(p, prompt)
-            elif provider["type"] == "huggingface":
-                text = call_huggingface(p, prompt)
-            else:
-                text = call_openai_compat(p, prompt)
-            logger.info(f"Success with provider: {provider['name']}")
-            return text, provider["name"]
-        except Exception as e:
-            logger.warning(f"{provider['name']} failed: {e}")
-            last_error = e
-            continue
+        for attempt in range(2):  # retry once on 429
+            try:
+                logger.info(f"Trying provider: {provider['name']}")
+                p = {**provider, "api_key": api_key}
+                if provider["type"] == "gemini":
+                    text = call_gemini(p, prompt)
+                elif provider["type"] == "huggingface":
+                    text = call_huggingface(p, prompt)
+                else:
+                    text = call_openai_compat(p, prompt)
+                logger.info(f"Success with provider: {provider['name']}")
+                return text, provider["name"]
+            except Exception as e:
+                err_str = str(e)
+                if "429" in err_str and attempt == 0:
+                    logger.warning(f"{provider['name']} rate limited, waiting 2s...")
+                    time.sleep(2)  # wait before retry
+                else:
+                    logger.warning(f"{provider['name']} failed: {e}")
+                    last_error = e
+                    break
     raise ValueError(f"All providers exhausted. Last error: {last_error}")
 
 
