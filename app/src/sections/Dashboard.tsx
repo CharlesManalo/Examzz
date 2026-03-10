@@ -108,7 +108,7 @@ const Dashboard = ({ user, onNavigate, onLogout }: DashboardProps) => {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
-                Welcome, {user.email}
+                Welcome, {user.nickname || user.email}!
               </span>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 Logout
@@ -121,7 +121,7 @@ const Dashboard = ({ user, onNavigate, onLogout }: DashboardProps) => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Welcome back, {user.email}!
+            Welcome back, {user.nickname || user.email}!
           </h2>
           <p className="text-gray-600">
             Ready to create and take AI-powered quizzes?
