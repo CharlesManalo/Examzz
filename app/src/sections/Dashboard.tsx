@@ -21,6 +21,7 @@ import {
   BookOpen,
   Zap,
   Target,
+  ChevronRight,
   Star,
 } from "lucide-react";
 
@@ -246,28 +247,46 @@ const Dashboard = ({
 
           <Card
             className="group cursor-pointer hover:shadow-lg transition-all border-0 shadow-md bg-gradient-to-br from-violet-500 to-purple-500 text-white"
-            onClick={() => onNavigate("upload")}
+            onClick={() => {
+              if (recentResults.length > 0) {
+                onNavigate("results");
+              } else {
+                toast.info("No results yet — take a quiz first!");
+              }
+            }}
           >
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center">
-                  <Target className="h-6 w-6 text-white" />
+                  <Trophy className="h-6 w-6 text-white" />
                 </div>
                 <Badge
                   variant="secondary"
                   className="bg-white/20 text-white border-0"
                 >
-                  25 Qs
+                  {recentResults.length > 0
+                    ? `${recentResults[0]?.score}%`
+                    : "N/A"}
                 </Badge>
               </div>
-              <h3 className="text-lg font-semibold mb-1">Mock Exam</h3>
-              <p className="text-violet-100 text-sm">Practice test mode</p>
+              <h3 className="text-lg font-semibold mb-1">Last Result</h3>
+              <p className="text-violet-100 text-sm">
+                {recentResults.length > 0
+                  ? "View your last score"
+                  : "No results yet"}
+              </p>
             </CardContent>
           </Card>
 
           <Card
             className="group cursor-pointer hover:shadow-lg transition-all border-0 shadow-md bg-gradient-to-br from-green-500 to-emerald-500 text-white"
-            onClick={() => onNavigate("upload")}
+            onClick={() => {
+              if (recentResults.length > 0) {
+                onNavigate("review");
+              } else {
+                toast.info("No answers to review yet!");
+              }
+            }}
           >
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
@@ -278,11 +297,15 @@ const Dashboard = ({
                   variant="secondary"
                   className="bg-white/20 text-white border-0"
                 >
-                  Study
+                  Review
                 </Badge>
               </div>
-              <h3 className="text-lg font-semibold mb-1">Lesson Review</h3>
-              <p className="text-green-100 text-sm">Review key concepts</p>
+              <h3 className="text-lg font-semibold mb-1">Review Answers</h3>
+              <p className="text-green-100 text-sm">
+                {recentResults.length > 0
+                  ? "Review last quiz answers"
+                  : "No answers yet"}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -515,9 +538,10 @@ const Dashboard = ({
                           </div>
                           <div>
                             <p className="text-sm font-medium">
-                              {result.quizId?.substring(0, 8)}...
+                              Quiz Completed
                             </p>
                             <p className="text-xs text-muted-foreground">
+                              Score: {result.score}% •{" "}
                               {formatTimeAgo(result.completedAt)}
                             </p>
                           </div>
