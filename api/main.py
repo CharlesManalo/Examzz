@@ -66,7 +66,9 @@ Requirements:
 - Create {difficulty_prompts.get(difficulty, "moderately challenging")} questions
 - Each question must have exactly 4 options (A, B, C, D)
 - Only one option should be correct
-- Questions should cover different aspects of the text
+- ONLY ask questions about LESSON CONTENT (concepts, definitions, facts, processes)
+- Do NOT ask questions about the module structure, icons, how to use the module, or learning objectives
+- Questions should test understanding of the actual subject matter taught
 - Avoid true/false questions
 - Make questions clear and unambiguous
 
@@ -241,11 +243,41 @@ def generate_quiz_logic(content: bytes, filename: str, question_count: int = 10,
     if not extracted_text.strip():
         raise ValueError("No text extracted from file.")
 
-    max_chars = 5000
-    if len(extracted_text) > max_chars:
-        extracted_text = extracted_text[:max_chars] + "..."
+    # Skip boilerplate intro content
+    skip_phrases = [
+        "what i need to know",
+        "introductory message",
+        "for the facilitator",
+        "for the learner",
+        "how to use this module",
+        "notes to the teacher",
+    ]
+    
+    lines = extracted_text.split("\n")
+    filtered_lines = []
+    skip = False
+    for line in lines:
+        lower = line.lower().strip()
+        # Start skipping on intro sections
+        if any(phrase in lower for phrase in skip_phrases):
+            skip = True
+        # Stop skipping when actual lesson content starts
+        if "what is it" in lower or "lesson 1" in lower or "lesson 2" in lower:
+            skip = False
+        if not skip:
+            filtered_lines.append(line)
+    
+    cleaned_text = "\n".join(filtered_lines).strip()
+    
+    # Use cleaned text, fallback to original if too short
+    final_text = cleaned_text if len(cleaned_text) > 500 else extracted_text
 
-    prompt = build_prompt(extracted_text, question_count, difficulty)
+    # Increase limit so actual lesson content is included
+    max_chars = 12000
+    if len(final_text) > max_chars:
+        final_text = final_text[:max_chars] + "..."
+
+    prompt = build_prompt(final_text, question_count, difficulty)
     response_text, provider_used = generate_with_fallback(prompt)
 
     if not response_text:
