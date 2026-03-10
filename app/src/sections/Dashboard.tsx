@@ -424,6 +424,63 @@ const Dashboard = ({
             <Card className="border-0 shadow-md">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
+                  <Play className="h-5 w-5 text-green-600" />
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => onNavigate("upload")}
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Start New Quiz
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    disabled={recentResults.length === 0}
+                    onClick={() =>
+                      recentResults.length > 0
+                        ? onNavigate("results")
+                        : toast.info("No results yet — take a quiz first!")
+                    }
+                  >
+                    <Trophy className="h-4 w-4 mr-2" />
+                    View Last Result
+                    {recentResults.length === 0 && (
+                      <span className="ml-auto text-xs text-gray-400">
+                        No results yet
+                      </span>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    disabled={recentResults.length === 0}
+                    onClick={() =>
+                      recentResults.length > 0
+                        ? onNavigate("review")
+                        : toast.info("No answers to review yet!")
+                    }
+                  >
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Review Last Answers
+                    {recentResults.length === 0 && (
+                      <span className="ml-auto text-xs text-gray-400">
+                        No results yet
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-orange-500" />
                   Recent Activity
                 </CardTitle>
