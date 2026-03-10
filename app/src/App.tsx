@@ -125,10 +125,11 @@ function App() {
       // Refetch user data to get the updated nickname from database
       const updatedUser = await getCurrentUser();
       if (updatedUser) {
-        setCurrentUserState(updatedUser);
+        setCurrentUserState({ ...updatedUser }); // spread forces re-render
       }
       setShowNicknamePrompt(false);
       toast.success("Nickname saved!");
+      navigateTo("dashboard"); // explicitly navigate to dashboard
     } catch (error) {
       console.error("Failed to save nickname:", error);
     }

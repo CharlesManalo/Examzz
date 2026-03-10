@@ -60,6 +60,7 @@ interface DatabaseUser {
   subscription_id: string | null;
   subscription_end_date: string | null;
   email_verified: boolean;
+  nickname: string | null;
 }
 
 interface DatabaseUploadedFile {
@@ -129,6 +130,7 @@ const mapDatabaseUser = (dbUser: DatabaseUser): User => ({
   id: dbUser.id,
   email: dbUser.email,
   password: "", // Never return password hash
+  nickname: dbUser.nickname || undefined,
   createdAt: dbUser.created_at,
   lastLogin: dbUser.last_login || dbUser.created_at,
   isPremium: dbUser.is_premium,
@@ -266,6 +268,7 @@ export const updateUser = async (
   if (updates.subscriptionEndDate)
     dbUpdates.subscription_end_date = updates.subscriptionEndDate;
   if (updates.isPremium !== undefined) dbUpdates.is_premium = updates.isPremium;
+  if (updates.nickname !== undefined) dbUpdates.nickname = updates.nickname;
 
   const { data, error } = await supabase
     .from("users")
