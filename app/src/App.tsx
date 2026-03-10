@@ -122,7 +122,11 @@ function App() {
 
     try {
       await updateUser(currentUser.id, { nickname });
-      setCurrentUserState({ ...currentUser, nickname });
+      // Refetch user data to get the updated nickname from database
+      const updatedUser = await getCurrentUser();
+      if (updatedUser) {
+        setCurrentUserState(updatedUser);
+      }
       setShowNicknamePrompt(false);
       toast.success("Nickname saved!");
     } catch (error) {
