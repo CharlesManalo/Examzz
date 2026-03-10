@@ -4,9 +4,12 @@ import {
   getCurrentUser,
   onAuthStateChange,
   trackActiveUser,
+  updateUser,
+  needsNickname,
 } from "@/services/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
+import NicknamePrompt from "@/components/NicknamePrompt";
 
 // Sections
 import Navbar from "@/sections/Navbar";
@@ -32,6 +35,7 @@ function App() {
   const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
   const [currentResult, setCurrentResult] = useState<QuizResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showNicknamePrompt, setShowNicknamePrompt] = useState(false);
 
   // Initialize auth and check for existing session
   useEffect(() => {
@@ -49,6 +53,10 @@ function App() {
       setCurrentUserState(user);
       if (user) {
         trackActiveUser();
+        // Check if user needs to set nickname
+        if (needsNickname(user)) {
+          setShowNicknamePrompt(true);
+        }
       }
     });
 
@@ -89,6 +97,19 @@ function App() {
       description: "Welcome to StudyQuiz Pro",
     });
     navigateTo("dashboard");
+  };
+
+  const handleNicknameSubmit = async (nickname: string) => {
+    if (!currentUser) return;
+
+    try {
+      await updateUser(currentUser.id, { nickname });
+      setCurrentUserState({ ...currentUser, nickname });
+      setShowNicknamePrompt(false);
+      toast.success("Nickname saved!");
+    } catch (error) {
+      console.error("Failed to save nickname:", error);
+    }
   };
 
   const startQuiz = (quiz: Quiz, questions: Question[]) => {
@@ -244,6 +265,11 @@ function App() {
       <main className="flex-1">{renderView()}</main>
       <Footer onNavigate={navigateTo} />
       <Toaster position="top-right" richColors />
+      <NicknamePrompt
+        isOpen={showNicknamePrompt}
+        onSubmit={handleNicknameSubmit}
+        userEmail={currentUser?.email || ""}
+      />
     </div>
   );
 }

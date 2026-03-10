@@ -117,6 +117,7 @@ const Home = ({ onNavigate, isAuthenticated }: HomeProps) => {
                   size="lg"
                   variant="outline"
                   onClick={() => onNavigate("login")}
+                  className={isAuthenticated ? "hidden" : ""}
                 >
                   Sign In
                 </Button>

@@ -13,6 +13,7 @@ import type {
 interface DatabaseUser {
   id: string;
   email: string;
+  nickname?: string;
   created_at: string;
   updated_at: string;
   last_login: string | null;
@@ -83,6 +84,7 @@ const mapAuthUserToAppUser = (authUser: any, dbUser?: DatabaseUser): User => ({
   id: authUser.id,
   email: authUser.email || "",
   password: "", // Never return password hash
+  nickname: dbUser?.nickname || undefined,
   createdAt: authUser.created_at,
   lastLogin: dbUser?.last_login || authUser.created_at,
   isPremium: dbUser?.is_premium || false,
@@ -355,6 +357,7 @@ export const updateUser = async (
   if (updates.subscriptionEndDate)
     dbUpdates.subscription_end_date = updates.subscriptionEndDate;
   if (updates.isPremium !== undefined) dbUpdates.is_premium = updates.isPremium;
+  if (updates.nickname !== undefined) dbUpdates.nickname = updates.nickname;
 
   const { data, error } = await supabase
     .from("users")
@@ -363,13 +366,21 @@ export const updateUser = async (
     .select()
     .single();
 
-  if (error) return null;
+  if (error) {
+    console.error("Error updating user:", error);
+    return null;
+  }
 
-  // Get auth user to return complete User object
-  const { data: authUser } = await supabase.auth.getUser();
-  if (!authUser.user) return null;
+  return mapAuthUserToAppUser(
+    { id: data.id, email: data.email, created_at: data.created_at },
+    data,
+  );
+};
 
-  return mapAuthUserToAppUser(authUser.user, data);
+// Check if user needs to set nickname
+export const needsNickname = (user: User | null): boolean => {
+  if (!user) return false;
+  return !user.nickname || user.nickname.trim() === "";
 };
 
 export const getUserByEmail = async (email: string): Promise<User | null> => {

@@ -194,100 +194,44 @@ const Dashboard = ({ user, onNavigate, onLogout }: DashboardProps) => {
         </div>
 
         {/* Main Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Brain className="h-5 w-5 text-blue-600" />
-                Create New Quiz
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-gray-600">
-                Upload a document and let AI generate a quiz for you.
-              </p>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <FileText className="h-4 w-4" />
-                  <span>PDF, Word, PowerPoint</span>
+        <div className="flex justify-center mb-8">
+          <div className="w-full max-w-2xl">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-blue-600" />
+                  Create New Quiz
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-gray-600">
+                  Upload a document and let AI generate a quiz for you.
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <FileText className="h-4 w-4" />
+                    <span>PDF, Word, PowerPoint</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Star className="h-4 w-4" />
+                    <span>10, 25, or 50 questions</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <TrendingUp className="h-4 w-4" />
+                    <span>Easy, Medium, or Hard</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Star className="h-4 w-4" />
-                  <span>10, 25, or 50 questions</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <TrendingUp className="h-4 w-4" />
-                  <span>Easy, Medium, or Hard</span>
-                </div>
-              </div>
-              <Button
-                onClick={() => onNavigate("upload")}
-                className="w-full"
-                size="lg"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Create Quiz
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Play className="h-5 w-5 text-green-600" />
-                Quick Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-gray-600">Jump back into your learning.</p>
-              <div className="space-y-3">
                 <Button
-                  variant="outline"
-                  className="w-full justify-start"
                   onClick={() => onNavigate("upload")}
+                  className="w-full"
+                  size="lg"
                 >
-                  <Play className="h-4 w-4 mr-2" />
-                  Start New Quiz
+                  <Upload className="h-4 w-4 mr-2" />
+                  Create Quiz
                 </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  disabled={recentResults.length === 0}
-                  onClick={() =>
-                    recentResults.length > 0
-                      ? onNavigate("results")
-                      : toast.info("No results yet — take a quiz first!")
-                  }
-                >
-                  <Trophy className="h-4 w-4 mr-2" />
-                  View Last Result
-                  {recentResults.length === 0 && (
-                    <span className="ml-auto text-xs text-gray-400">
-                      No results yet
-                    </span>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  disabled={recentResults.length === 0}
-                  onClick={() =>
-                    recentResults.length > 0
-                      ? onNavigate("review")
-                      : toast.info("No answers to review yet!")
-                  }
-                >
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Review Last Answers
-                  {recentResults.length === 0 && (
-                    <span className="ml-auto text-xs text-gray-400">
-                      No results yet
-                    </span>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Recent Activity */}
