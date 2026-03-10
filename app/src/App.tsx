@@ -36,6 +36,7 @@ function App() {
   const [currentResult, setCurrentResult] = useState<QuizResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showNicknamePrompt, setShowNicknamePrompt] = useState(false);
+  const [nicknameChecked, setNicknameChecked] = useState(false);
 
   // Initialize auth and check for existing session
   useEffect(() => {
@@ -53,10 +54,14 @@ function App() {
       setCurrentUserState(user);
       if (user) {
         trackActiveUser();
-        // Check if user needs to set nickname
-        if (needsNickname(user)) {
+        // Check if user needs to set nickname (only check once per session)
+        if (!nicknameChecked && needsNickname(user)) {
           setShowNicknamePrompt(true);
+          setNicknameChecked(true);
         }
+      } else {
+        // Reset nickname checked state when user logs out
+        setNicknameChecked(false);
       }
     });
 
