@@ -40,10 +40,19 @@ function App() {
 
   // Initialize auth and check for existing session
   useEffect(() => {
+    // Check if nickname was already checked in this browser session
+    const nicknameWasChecked = sessionStorage.getItem("nicknameChecked");
+    setNicknameChecked(nicknameWasChecked === "true");
+
     // Check for existing session on mount
     getCurrentUser().then((user) => {
       if (user) {
         setCurrentUserState(user);
+        // Check if user needs nickname (only if not already checked in this session)
+        if (nicknameWasChecked !== "true" && needsNickname(user)) {
+          setShowNicknamePrompt(true);
+          sessionStorage.setItem("nicknameChecked", "true");
+        }
       }
       setIsLoading(false);
       trackActiveUser();
@@ -54,13 +63,17 @@ function App() {
       setCurrentUserState(user);
       if (user) {
         trackActiveUser();
-        // Check if user needs to set nickname (only check once per session)
-        if (!nicknameChecked && needsNickname(user)) {
+        // Check if user needs to set nickname (only if not already checked in this session)
+        if (
+          sessionStorage.getItem("nicknameChecked") !== "true" &&
+          needsNickname(user)
+        ) {
           setShowNicknamePrompt(true);
-          setNicknameChecked(true);
+          sessionStorage.setItem("nicknameChecked", "true");
         }
       } else {
         // Reset nickname checked state when user logs out
+        sessionStorage.removeItem("nicknameChecked");
         setNicknameChecked(false);
       }
     });

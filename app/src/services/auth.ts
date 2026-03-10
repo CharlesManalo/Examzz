@@ -286,10 +286,17 @@ export const updatePassword = async (newPassword: string): Promise<void> => {
 
 // Google OAuth functions
 export const signInWithGoogle = async (): Promise<void> => {
+  // Clear any existing session first to prevent account mixing
+  await supabase.auth.signOut();
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/dashboard`,
+      queryParams: {
+        access_type: "offline",
+        prompt: "consent", // Force account selection
+      },
     },
   });
 
@@ -298,10 +305,17 @@ export const signInWithGoogle = async (): Promise<void> => {
 };
 
 export const signUpWithGoogle = async (): Promise<void> => {
+  // Clear any existing session first to prevent account mixing
+  await supabase.auth.signOut();
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/dashboard`,
+      queryParams: {
+        access_type: "offline",
+        prompt: "consent", // Force account selection
+      },
     },
   });
 
