@@ -2,3 +2,5 @@ google-genai
 python-dotenv
 huggingface_hub
 pypdf
+python-docx
+python-pptx

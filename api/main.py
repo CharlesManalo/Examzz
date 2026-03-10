@@ -147,8 +147,10 @@ def extract_retry_delay(error_str: str) -> int:
 
 
 def extract_text_from_file(content: bytes, filename: str) -> str:
-    """Extract readable text from PDF or plain text files."""
-    if filename.lower().endswith(".pdf"):
+    """Extract readable text from PDF, DOCX, PPTX, or plain text files."""
+    fname = filename.lower()
+    
+    if fname.endswith(".pdf"):
         try:
             import pypdf
             import io
@@ -160,6 +162,33 @@ def extract_text_from_file(content: bytes, filename: str) -> str:
         except Exception as e:
             logger.warning(f"PDF extraction failed: {e}")
             return content.decode("utf-8", errors="ignore")
+
+    elif fname.endswith(".docx"):
+        try:
+            import docx
+            import io
+            doc = docx.Document(io.BytesIO(content))
+            text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
+            return text
+        except Exception as e:
+            logger.warning(f"DOCX extraction failed: {e}")
+            return content.decode("utf-8", errors="ignore")
+
+    elif fname.endswith(".pptx"):
+        try:
+            from pptx import Presentation
+            import io
+            prs = Presentation(io.BytesIO(content))
+            text = ""
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if hasattr(shape, "text") and shape.text.strip():
+                        text += shape.text + "\n"
+            return text
+        except Exception as e:
+            logger.warning(f"PPTX extraction failed: {e}")
+            return content.decode("utf-8", errors="ignore")
+
     else:
         return content.decode("utf-8", errors="ignore")
 
