@@ -19,9 +19,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { quizAPI } from "@/lib/api";
-import { createQuiz, createQuestions, incrementUsage } from '@/services/supabase';
-import { getCurrentUser } from '@/services/supabase';
-import type { Quiz, Question, View } from '@/types';
+import {
+  createQuiz,
+  createQuestions,
+  incrementUsage,
+  getQuizzesByUserId,
+  cleanupOldQuizzes,
+} from "@/services/supabase";
+import { getCurrentUser } from "@/services/supabase";
+import type { Quiz, Question, View } from "@/types";
 
 interface QuizQuestion {
   question: string;
@@ -62,8 +68,10 @@ const QuizUpload = ({ onStartQuiz, onNavigate }: QuizUploadProps) => {
     onDrop,
     accept: {
       "application/pdf": [".pdf"],
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        [".docx"],
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+        [".pptx"],
       "text/plain": [".txt"],
     },
     multiple: false,
@@ -72,6 +80,22 @@ const QuizUpload = ({ onStartQuiz, onNavigate }: QuizUploadProps) => {
   const handleGenerateQuiz = async () => {
     if (!file) {
       toast.error("Please select a file first");
+      return;
+    }
+
+    // Add quiz limit check
+    const user = await getCurrentUser();
+    if (!user) {
+      toast.error("Please log in");
+      return;
+    }
+
+    await cleanupOldQuizzes(user.id);
+    const existingQuizzes = await getQuizzesByUserId(user.id);
+    if (existingQuizzes.length >= 3) {
+      toast.error(
+        "You have 3 saved quizzes. Complete or wait for them to expire before creating a new one.",
+      );
       return;
     }
 
@@ -96,15 +120,15 @@ const QuizUpload = ({ onStartQuiz, onNavigate }: QuizUploadProps) => {
 
       if (response.data.success) {
         const user = await getCurrentUser();
-        if (!user) throw new Error('Not authenticated');
+        if (!user) throw new Error("Not authenticated");
 
         // Save quiz to Supabase
         const savedQuiz = await createQuiz({
           userId: user.id,
-          quizType: 'quiz',
-          title: file.name.replace(/\.[^/.]+$/, ''),
+          quizType: "quiz",
+          title: file.name.replace(/\.[^/.]+$/, ""),
           totalQuestions: response.data.quiz.length,
-          fileIds: []
+          fileIds: [],
         });
 
         // Save questions to Supabase
@@ -114,15 +138,15 @@ const QuizUpload = ({ onStartQuiz, onNavigate }: QuizUploadProps) => {
             question: q.question,
             options: q.options,
             correctAnswer: q.answer_index,
-            questionType: 'multiple-choice' as const,
-            explanation: q.explanation
-          }))
+            questionType: "multiple-choice" as const,
+            explanation: q.explanation,
+          })),
         );
 
-        await incrementUsage(user.id, 'quiz');
+        await incrementUsage(user.id, "quiz");
 
         toast.success(`Generated ${savedQuestions.length} questions!`);
-        onStartQuiz(savedQuiz, savedQuestions);  // hands off to Exam
+        onStartQuiz(savedQuiz, savedQuestions); // hands off to Exam
       } else {
         toast.error("Failed to generate quiz");
       }

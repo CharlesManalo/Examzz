@@ -639,3 +639,68 @@ export const clearDatabase = (): void => {
   // Not applicable for Supabase
   console.warn("clearDatabase not applicable for Supabase");
 };
+
+export const cleanupOldQuizzes = async (userId: string): Promise<void> => {
+  // Get all quizzes sorted by newest first
+  const { data: quizzes, error } = await supabase
+    .from("quizzes")
+    .select("id, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error || !quizzes) return;
+
+  const toDelete: string[] = [];
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
+  // Keep only 3 newest, delete the rest
+  if (quizzes.length > 3) {
+    quizzes.slice(3).forEach((q) => toDelete.push(q.id));
+  }
+
+  // Also delete any of the top 3 that are older than 2 days
+  quizzes.slice(0, 3).forEach((q) => {
+    if (new Date(q.created_at) < twoDaysAgo) {
+      toDelete.push(q.id);
+    }
+  });
+
+  if (toDelete.length === 0) return;
+
+  // Delete related questions and results first (cascade)
+  await supabase.from("questions").delete().in("quiz_id", toDelete);
+  await supabase.from("quiz_results").delete().in("quiz_id", toDelete);
+  await supabase.from("quizzes").delete().in("id", toDelete);
+};
+
+export const getQuizExpiryInfo = (
+  createdAt: string,
+): {
+  hoursLeft: number;
+  minutesLeft: number;
+  isExpiringSoon: boolean;
+  label: string;
+} => {
+  const created = new Date(createdAt);
+  const expiresAt = new Date(created.getTime() + 2 * 24 * 60 * 60 * 1000);
+  const msLeft = expiresAt.getTime() - Date.now();
+
+  if (msLeft <= 0)
+    return {
+      hoursLeft: 0,
+      minutesLeft: 0,
+      isExpiringSoon: true,
+      label: "Expired",
+    };
+
+  const hoursLeft = Math.floor(msLeft / (1000 * 60 * 60));
+  const minutesLeft = Math.floor((msLeft % (1000 * 60 * 60)) / (1000 * 60));
+  const isExpiringSoon = hoursLeft < 6;
+
+  const label =
+    hoursLeft > 0
+      ? `${hoursLeft}h ${minutesLeft}m left`
+      : `${minutesLeft}m left`;
+
+  return { hoursLeft, minutesLeft, isExpiringSoon, label };
+};

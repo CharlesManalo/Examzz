@@ -8,6 +8,8 @@ import {
   getQuizzesByUserId,
   getResultsByUserId,
   getQuestionsByQuizId,
+  cleanupOldQuizzes,
+  getQuizExpiryInfo,
 } from "@/services/supabase";
 import { toast } from "sonner";
 import {
@@ -23,6 +25,7 @@ import {
   Target,
   ChevronRight,
   Star,
+  Clock,
 } from "lucide-react";
 
 interface DashboardProps {
@@ -52,6 +55,9 @@ const Dashboard = ({
     const fetchStats = async () => {
       try {
         setLoading(true);
+
+        // ✅ Clean up old/excess quizzes first
+        await cleanupOldQuizzes(user.id);
 
         // Fetch user's quizzes and results
         const [quizzes, results] = await Promise.all([
@@ -378,6 +384,12 @@ const Dashboard = ({
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Zap className="h-5 w-5 text-violet-600" />
                     Recent Quizzes
+                    <Badge
+                      variant="outline"
+                      className="text-xs font-normal ml-1"
+                    >
+                      {recentQuizzes.length}/3
+                    </Badge>
                   </CardTitle>
                   <Button
                     variant="ghost"
@@ -393,6 +405,7 @@ const Dashboard = ({
                   <div className="space-y-3">
                     {recentQuizzes.map((quiz) => {
                       const Icon = getQuizIcon(quiz.quizType);
+                      const expiry = getQuizExpiryInfo(quiz.createdAt);
                       return (
                         <div
                           key={quiz.id}
@@ -400,7 +413,7 @@ const Dashboard = ({
                         >
                           <div className="flex items-center gap-3">
                             <div
-                              className={`h-10 w-10 rounded-lg bg-gradient-to-br ${getQuizColor(quiz.quizType)} flex items-center justify-center`}
+                              className={`h-10 w-10 rounded-lg bg-gradient-to-br ${getQuizColor(quiz.quizType)} flex items-center justify-center flex-shrink-0`}
                             >
                               <Icon className="h-5 w-5 text-white" />
                             </div>
@@ -412,6 +425,19 @@ const Dashboard = ({
                                 {quiz.totalQuestions} questions •{" "}
                                 {getQuizTitle(quiz.quizType)}
                               </p>
+                              {/* ✅ Expiry timer */}
+                              <div
+                                className={`flex items-center gap-1 mt-0.5 ${
+                                  expiry.isExpiringSoon
+                                    ? "text-red-500"
+                                    : "text-amber-500"
+                                }`}
+                              >
+                                <Clock className="h-3 w-3" />
+                                <span className="text-xs font-medium">
+                                  {expiry.label}
+                                </span>
+                              </div>
                             </div>
                           </div>
                           <Button
@@ -425,6 +451,16 @@ const Dashboard = ({
                         </div>
                       );
                     })}
+
+                    {/* ✅ Slot indicators for remaining slots */}
+                    {recentQuizzes.length < 3 && (
+                      <div className="pt-1 border-t">
+                        <p className="text-xs text-muted-foreground text-center">
+                          {3 - recentQuizzes.length} quiz slot
+                          {3 - recentQuizzes.length > 1 ? "s" : ""} available
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8">
