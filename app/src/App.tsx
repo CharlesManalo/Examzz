@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import NicknamePrompt from "@/components/NicknamePrompt";
 import AdModal from "@/components/AdModal";
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 
 // Sections
 import Navbar from "@/sections/Navbar";
@@ -23,9 +24,8 @@ import Exam from "@/sections/Exam";
 import Results from "@/sections/Results";
 import Review from "@/sections/Review";
 import Admin from "@/sections/Admin";
+import Pricing from "@/sections/Pricing";
 import Footer from "@/sections/Footer";
-
-// Assets - temporarily using text logo instead of image
 
 import "./App.css";
 
@@ -37,24 +37,18 @@ function App() {
   const [currentResult, setCurrentResult] = useState<QuizResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showNicknamePrompt, setShowNicknamePrompt] = useState(false);
-  const [nicknameChecked, setNicknameChecked] = useState(false);
   const [showAdModal, setShowAdModal] = useState(false);
   const [pendingDestination, setPendingDestination] = useState<string | null>(
     null,
   );
   const [adShownThisSession, setAdShownThisSession] = useState(false);
 
-  // Initialize auth and check for existing session
   useEffect(() => {
-    // Check if nickname was already checked in this browser session
     const nicknameWasChecked = sessionStorage.getItem("nicknameChecked");
-    setNicknameChecked(nicknameWasChecked === "true");
 
-    // Check for existing session on mount
     getCurrentUser().then((user) => {
       if (user) {
         setCurrentUserState(user);
-        // Check if user needs nickname (only if not already checked in this session)
         if (nicknameWasChecked !== "true" && needsNickname(user)) {
           setShowNicknamePrompt(true);
           sessionStorage.setItem("nicknameChecked", "true");
@@ -64,12 +58,10 @@ function App() {
       trackActiveUser();
     });
 
-    // Listen for auth state changes
     const unsubscribe = onAuthStateChange((user) => {
       setCurrentUserState(user);
       if (user) {
         trackActiveUser();
-        // Check if user needs to set nickname (only if not already checked in this session)
         if (
           sessionStorage.getItem("nicknameChecked") !== "true" &&
           needsNickname(user)
@@ -78,21 +70,16 @@ function App() {
           sessionStorage.setItem("nicknameChecked", "true");
         }
       } else {
-        // Reset nickname checked state when user logs out
         sessionStorage.removeItem("nicknameChecked");
-        setNicknameChecked(false);
       }
     });
 
-    // Cleanup on unmount
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 
-  // Navigation handlers
+  // Navigation
   const navigateTo = (view: View) => {
     const comingFromIndex =
       currentView === "home" ||
@@ -107,8 +94,12 @@ function App() {
       "admin",
     ].includes(view);
 
-    // Show ad only once per session when leaving index
-    if (comingFromIndex && isAppPage && !adShownThisSession) {
+    // Show ad only once per session when leaving index pages,
+    // but NEVER if user is a Supporter (premium)
+    const userIsPremium =
+      currentUser?.isPremium === true || currentUser?.planType === "premium";
+
+    if (comingFromIndex && isAppPage && !adShownThisSession && !userIsPremium) {
       setPendingDestination(view);
       setShowAdModal(true);
       setAdShownThisSession(true);
@@ -120,7 +111,6 @@ function App() {
   };
 
   const handleLogin = (user: User) => {
-    // Auth state is managed by Supabase, no need to manually set
     toast.success("Welcome back!", {
       description: `Logged in as ${user.email}`,
     });
@@ -137,26 +127,19 @@ function App() {
   };
 
   const handleRegister = (user: User) => {
-    // Auth state is managed by Supabase, no need to manually set
-    toast.success("Account created!", {
-      description: "Welcome to StudyQuiz Pro",
-    });
+    toast.success("Account created!", { description: "Welcome to EXAMZZ" });
     navigateTo("dashboard");
   };
 
   const handleNicknameSubmit = async (nickname: string) => {
     if (!currentUser) return;
-
     try {
       await updateUser(currentUser.id, { nickname });
-      // Refetch user data to get the updated nickname from database
       const updatedUser = await getCurrentUser();
-      if (updatedUser) {
-        setCurrentUserState({ ...updatedUser }); // spread forces re-render
-      }
+      if (updatedUser) setCurrentUserState({ ...updatedUser });
       setShowNicknamePrompt(false);
       toast.success("Nickname saved!");
-      navigateTo("dashboard"); // explicitly navigate to dashboard
+      navigateTo("dashboard");
     } catch (error) {
       console.error("Failed to save nickname:", error);
     }
@@ -179,7 +162,6 @@ function App() {
     navigateTo("review");
   };
 
-  // Render current view
   const renderView = () => {
     if (isLoading) {
       return (
@@ -294,6 +276,9 @@ function App() {
           />
         );
 
+      case "pricing":
+        return <Pricing onNavigate={navigateTo} />;
+
       case "admin":
         return currentUser?.email === "admin@studyquiz.com" ? (
           <Admin onNavigate={navigateTo} />
@@ -312,38 +297,41 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Navbar
-        currentView={currentView}
-        onNavigate={navigateTo}
-        isAuthenticated={!!currentUser}
-        onLogout={handleLogout}
-        user={currentUser}
-      />
-      <main className="flex-1">{renderView()}</main>
-      <Footer onNavigate={navigateTo} />
-      <Toaster position="top-right" richColors />
-      <NicknamePrompt
-        isOpen={showNicknamePrompt}
-        onSubmit={handleNicknameSubmit}
-        userEmail={currentUser?.email || ""}
-      />
-      {showAdModal && pendingDestination && (
-        <AdModal
-          destination={pendingDestination}
-          onNavigate={(page) => {
-            setCurrentView(page as View);
-            setShowAdModal(false);
-            setPendingDestination(null);
-            window.scrollTo(0, 0);
-          }}
-          onClose={() => {
-            setShowAdModal(false);
-            setPendingDestination(null);
-          }}
+    <SubscriptionProvider user={currentUser}>
+      <div className="min-h-screen bg-background flex flex-col">
+        <Navbar
+          currentView={currentView}
+          onNavigate={navigateTo}
+          isAuthenticated={!!currentUser}
+          onLogout={handleLogout}
+          user={currentUser}
         />
-      )}
-    </div>
+        <main className="flex-1">{renderView()}</main>
+        <Footer onNavigate={navigateTo} />
+        <Toaster position="top-right" richColors />
+        <NicknamePrompt
+          isOpen={showNicknamePrompt}
+          onSubmit={handleNicknameSubmit}
+          userEmail={currentUser?.email || ""}
+        />
+        {showAdModal && pendingDestination && (
+          <AdModal
+            destination={pendingDestination}
+            user={currentUser}
+            onNavigate={(page) => {
+              setCurrentView(page as View);
+              setShowAdModal(false);
+              setPendingDestination(null);
+              window.scrollTo(0, 0);
+            }}
+            onClose={() => {
+              setShowAdModal(false);
+              setPendingDestination(null);
+            }}
+          />
+        )}
+      </div>
+    </SubscriptionProvider>
   );
 }
 

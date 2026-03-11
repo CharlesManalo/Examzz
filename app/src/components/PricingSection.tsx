@@ -2,137 +2,154 @@ import React from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Star, Crown } from "lucide-react";
+import { Check, Crown, Sparkles } from "lucide-react";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { subscriptionPlans } from "@/services/paymongo";
 import { toast } from "sonner";
 
-const PricingCard: React.FC<{
-  plan: (typeof subscriptionPlans)[0];
-  isCurrentPlan?: boolean;
-  isPopular?: boolean;
-}> = ({ plan, isCurrentPlan, isPopular }) => {
-  const { upgradeToPremium, isLoading } = useSubscription();
+const PricingSection: React.FC<{ onNavigate?: (view: string) => void }> = ({
+  onNavigate,
+}) => {
+  const { isPremium, upgradeToPremium, isLoading } = useSubscription();
 
   const handleUpgrade = async () => {
     try {
       await upgradeToPremium();
     } catch (error) {
-      toast.error("Failed to start upgrade process");
+      toast.error("Failed to start payment. Please try again.");
     }
   };
 
   return (
-    <Card
-      className={`relative ${isPopular ? "border-primary shadow-lg scale-105" : ""}`}
-    >
-      {isPopular && (
-        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-          <Badge className="bg-primary text-primary-foreground">
-            <Star className="w-3 h-3 mr-1" />
-            Most Popular
-          </Badge>
-        </div>
-      )}
-
-      <CardHeader className="text-center">
-        <div className="flex justify-center mb-4">
-          {plan.id === "premium" ? (
-            <Crown className="w-12 h-12 text-primary" />
-          ) : (
-            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-              <span className="text-2xl">📚</span>
-            </div>
-          )}
-        </div>
-
-        <CardTitle className="text-xl">{plan.name}</CardTitle>
-        <CardDescription>
-          {plan.id === "free"
-            ? "Perfect for getting started"
-            : "For serious learners"}
-        </CardDescription>
-
-        <div className="mt-4">
-          <span className="text-4xl font-bold">${plan.price}</span>
-          {plan.price > 0 && (
-            <span className="text-muted-foreground">/{plan.interval}</span>
-          )}
-        </div>
-      </CardHeader>
-
-      <CardContent>
-        <ul className="space-y-3">
-          {plan.features.map((feature, index) => (
-            <li key={index} className="flex items-start">
-              <Check className="w-5 h-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-              <span className="text-sm">{feature}</span>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-
-      <CardFooter>
-        {isCurrentPlan ? (
-          <Button className="w-full" disabled>
-            Current Plan
-          </Button>
-        ) : plan.price === 0 ? (
-          <Button variant="outline" className="w-full" disabled>
-            Free Plan
-          </Button>
-        ) : (
-          <Button
-            className="w-full"
-            onClick={handleUpgrade}
-            disabled={isLoading}
-          >
-            {isLoading ? "Processing..." : `Upgrade to ${plan.name}`}
-          </Button>
-        )}
-      </CardFooter>
-    </Card>
-  );
-};
-
-const PricingSection: React.FC = () => {
-  const { isPremium } = useSubscription();
-
-  return (
-    <div className="py-16">
+    <div className="py-16 px-4">
+      {/* Header */}
       <div className="text-center mb-12">
-        <h2 className="text-3xl font-bold mb-4">Choose Your Plan</h2>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          Select the perfect plan for your learning journey. Upgrade anytime to
-          unlock more features.
+        <Badge className="mb-4 bg-violet-100 text-violet-700 border-0">
+          Pricing
+        </Badge>
+        <h2 className="text-3xl font-bold text-gray-900 mb-3">
+          Simple, honest pricing
+        </h2>
+        <p className="text-gray-500 max-w-md mx-auto">
+          One plan. One payment. Lifetime access. No subscriptions, no renewals.
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-        {subscriptionPlans.map((plan) => (
-          <PricingCard
-            key={plan.id}
-            plan={plan}
-            isCurrentPlan={
-              (plan.id === "free" && !isPremium) ||
-              (plan.id === "premium" && isPremium)
-            }
-            isPopular={plan.id === "premium"}
-          />
-        ))}
+      {/* Cards */}
+      <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+        {/* Free Plan */}
+        <Card className="border border-gray-200">
+          <CardHeader className="text-center pb-4">
+            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+              <span className="text-2xl">📚</span>
+            </div>
+            <CardTitle className="text-xl">Free</CardTitle>
+            <div className="mt-2">
+              <span className="text-4xl font-bold text-gray-900">₱0</span>
+            </div>
+            <p className="text-sm text-gray-400 mt-1">Always free</p>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {subscriptionPlans[0].features.map((feature, i) => (
+                <li
+                  key={i}
+                  className="flex items-start gap-2 text-sm text-gray-600"
+                >
+                  <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  {feature}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+          <CardFooter>
+            <Button variant="outline" className="w-full" disabled>
+              {!isPremium ? "Current Plan" : "Free Plan"}
+            </Button>
+          </CardFooter>
+        </Card>
+
+        {/* Supporter Plan */}
+        <Card className="border-2 border-violet-500 shadow-lg shadow-violet-100 relative">
+          {/* Popular badge */}
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+            <Badge className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white border-0 px-3">
+              <Sparkles className="w-3 h-3 mr-1" />
+              Best Value
+            </Badge>
+          </div>
+
+          <CardHeader className="text-center pb-4 pt-6">
+            <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center mx-auto mb-3">
+              <Crown className="w-6 h-6 text-violet-600" />
+            </div>
+            <CardTitle className="text-xl text-violet-700">Supporter</CardTitle>
+            <div className="mt-2">
+              <span className="text-4xl font-bold text-gray-900">₱100</span>
+            </div>
+            <p className="text-sm text-violet-500 font-medium mt-1">
+              One-time · Lifetime access
+            </p>
+          </CardHeader>
+
+          <CardContent>
+            <ul className="space-y-2">
+              {subscriptionPlans[1].features.map((feature, i) => (
+                <li
+                  key={i}
+                  className="flex items-start gap-2 text-sm text-gray-700"
+                >
+                  <Check className="w-4 h-4 text-violet-500 mt-0.5 flex-shrink-0" />
+                  {feature}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+
+          <CardFooter>
+            {isPremium ? (
+              <Button
+                className="w-full bg-gradient-to-r from-violet-600 to-indigo-600"
+                disabled
+              >
+                <Crown className="w-4 h-4 mr-2" />
+                You're a Supporter ✓
+              </Button>
+            ) : (
+              <Button
+                className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+                onClick={handleUpgrade}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="animate-spin">⏳</span> Redirecting...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Crown className="w-4 h-4" />
+                    Become a Supporter — ₱100
+                  </span>
+                )}
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
       </div>
 
-      <div className="text-center mt-12">
-        <p className="text-sm text-muted-foreground">
-          All plans include core quiz features. Cancel premium subscription
-          anytime.
+      {/* Trust note */}
+      <div className="text-center mt-10 space-y-1">
+        <p className="text-sm text-gray-400">
+          🔒 Secure payment via PayMongo · GCash, Maya, Cards accepted
+        </p>
+        <p className="text-xs text-gray-400">
+          Pay once. Use forever. No hidden charges.
         </p>
       </div>
     </div>

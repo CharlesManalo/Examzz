@@ -1,33 +1,53 @@
-import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { X } from "lucide-react";
+import { paymongoService } from "@/services/paymongo";
+import type { User } from "@/types";
 
 declare global {
-  interface Window { adsbygoogle: unknown[]; }
+  interface Window {
+    adsbygoogle: unknown[];
+  }
 }
 
 interface AdModalProps {
   onClose: () => void;
   destination: string;
   onNavigate: (page: string) => void;
+  user?: User | null;
 }
 
-export default function AdModal({ onClose, destination, onNavigate }: AdModalProps) {
-  const [countdown, setCountdown] = useState(5); // 5 sec before X appears
+export default function AdModal({
+  onClose,
+  destination,
+  onNavigate,
+  user,
+}: AdModalProps) {
+  const [countdown, setCountdown] = useState(5);
 
+  // If user is a Supporter (premium), skip the ad entirely and navigate directly
   useEffect(() => {
-    // Push ad
+    if (paymongoService.isSupporter(user ?? null)) {
+      onClose();
+      onNavigate(destination);
+      return;
+    }
+
+    // Push AdSense ad
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch (e) {}
 
-    // Countdown timer
-    if (countdown <= 0) return;
+    // Start countdown
     const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) { clearInterval(timer); return 0; }
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
         return prev - 1;
       });
     }, 1000);
+
     return () => clearInterval(timer);
   }, []);
 
@@ -36,6 +56,11 @@ export default function AdModal({ onClose, destination, onNavigate }: AdModalPro
     onNavigate(destination);
   };
 
+  // Don't render if premium — useEffect handles the redirect
+  if (paymongoService.isSupporter(user ?? null)) {
+    return null;
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
@@ -43,10 +68,11 @@ export default function AdModal({ onClose, destination, onNavigate }: AdModalPro
 
       {/* Modal */}
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-          <span className="text-xs text-gray-400 font-medium">Advertisement</span>
+          <span className="text-xs text-gray-400 font-medium">
+            Advertisement
+          </span>
           {countdown > 0 ? (
             <span className="text-xs text-gray-400 bg-gray-100 rounded-full px-2 py-1">
               Skip in {countdown}s
@@ -65,7 +91,7 @@ export default function AdModal({ onClose, destination, onNavigate }: AdModalPro
         <div className="p-4 min-h-[250px] flex items-center justify-center bg-gray-50">
           <ins
             className="adsbygoogle"
-            style={{ display: 'block', minHeight: '250px', width: '100%' }}
+            style={{ display: "block", minHeight: "250px", width: "100%" }}
             data-ad-client="ca-pub-9849203865786211"
             data-ad-slot="6330239352"
             data-ad-format="auto"
@@ -76,7 +102,16 @@ export default function AdModal({ onClose, destination, onNavigate }: AdModalPro
         {/* Footer */}
         <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 text-center">
           <p className="text-xs text-gray-400">
-            You'll be redirected after closing this ad
+            You'll be redirected after closing this ad •{" "}
+            <button
+              onClick={() => {
+                onClose();
+                onNavigate("pricing");
+              }}
+              className="text-violet-500 hover:text-violet-700 underline"
+            >
+              Remove ads forever
+            </button>
           </p>
         </div>
       </div>
