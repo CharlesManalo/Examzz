@@ -42,11 +42,14 @@ const Footer = ({ onNavigate }: FooterProps) => {
               className="flex items-center gap-2 mb-4 cursor-pointer"
               onClick={() => onNavigate("home")}
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600">
-                <span className="text-white font-bold text-sm">E</span>
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                Examzz
+              <span
+                className="text-xl font-black text-black tracking-wider"
+                style={{
+                  fontFamily:
+                    'Blanka, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                }}
+              >
+                EXAMZZ
               </span>
             </div>
             <p className="text-sm text-muted-foreground mb-4 max-w-xs">

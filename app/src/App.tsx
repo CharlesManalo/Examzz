@@ -10,6 +10,7 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import NicknamePrompt from "@/components/NicknamePrompt";
+import AdModal from "@/components/AdModal";
 
 // Sections
 import Navbar from "@/sections/Navbar";
@@ -37,6 +38,11 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [showNicknamePrompt, setShowNicknamePrompt] = useState(false);
   const [nicknameChecked, setNicknameChecked] = useState(false);
+  const [showAdModal, setShowAdModal] = useState(false);
+  const [pendingDestination, setPendingDestination] = useState<string | null>(
+    null,
+  );
+  const [adShownThisSession, setAdShownThisSession] = useState(false);
 
   // Initialize auth and check for existing session
   useEffect(() => {
@@ -88,6 +94,27 @@ function App() {
 
   // Navigation handlers
   const navigateTo = (view: View) => {
+    const comingFromIndex =
+      currentView === "home" ||
+      currentView === "login" ||
+      currentView === "register";
+    const isAppPage = [
+      "dashboard",
+      "upload",
+      "exam",
+      "results",
+      "review",
+      "admin",
+    ].includes(view);
+
+    // Show ad only once per session when leaving index
+    if (comingFromIndex && isAppPage && !adShownThisSession) {
+      setPendingDestination(view);
+      setShowAdModal(true);
+      setAdShownThisSession(true);
+      return;
+    }
+
     setCurrentView(view);
     window.scrollTo(0, 0);
   };
@@ -157,7 +184,15 @@ function App() {
     if (isLoading) {
       return (
         <div className="min-h-screen flex items-center justify-center">
-          <div className="text-3xl font-bold text-black">Examzz</div>
+          <div
+            className="text-4xl font-black text-black tracking-wider"
+            style={{
+              fontFamily:
+                'Blanka, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            }}
+          >
+            EXAMZZ
+          </div>
         </div>
       );
     }
@@ -293,6 +328,21 @@ function App() {
         onSubmit={handleNicknameSubmit}
         userEmail={currentUser?.email || ""}
       />
+      {showAdModal && pendingDestination && (
+        <AdModal
+          destination={pendingDestination}
+          onNavigate={(page) => {
+            setCurrentView(page as View);
+            setShowAdModal(false);
+            setPendingDestination(null);
+            window.scrollTo(0, 0);
+          }}
+          onClose={() => {
+            setShowAdModal(false);
+            setPendingDestination(null);
+          }}
+        />
+      )}
     </div>
   );
 }
