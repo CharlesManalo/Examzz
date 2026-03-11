@@ -207,6 +207,7 @@ export const signUp = async (
     subscription_id: null,
     subscription_end_date: null,
     email_verified: false,
+    nickname: null,
   });
 };
 
@@ -356,12 +357,17 @@ export const createQuiz = async (
   return mapDatabaseQuiz(data);
 };
 
-export const getQuizzesByUserId = async (userId: string): Promise<Quiz[]> => {
+export const getQuizzesByUserId = async (
+  userId: string,
+  isPremium: boolean = false,
+): Promise<Quiz[]> => {
+  const limit = isPremium ? 10 : 3;
   const { data, error } = await supabase
     .from("quizzes")
     .select("*")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(limit);
 
   if (error) throw error;
 
@@ -556,13 +562,7 @@ export const getUserSubscription = async (
 
 export const updateUserSubscription = async (
   userId: string,
-  subscriptionData: {
-    paymongoCustomerId?: string;
-    subscriptionStatus?: string;
-    planType?: string;
-    subscriptionId?: string;
-    subscriptionEndDate?: string;
-  },
+  subscriptionData: Partial<User>,
 ): Promise<User | null> => {
   return updateUser(userId, subscriptionData);
 };

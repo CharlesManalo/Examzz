@@ -32,7 +32,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
   const [usageLimits, setUsageLimits] = useState<UsageLimits>({
     quizzesToday: 0,
     filesUploaded: 0,
-    quizzesPerDayLimit: 15,
+    quizzesPerDayLimit: 10,
     fileUploadsLimit: 10,
     maxFileSizeLimit: 10,
     canUploadMore: true,
@@ -54,7 +54,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
     setUsageLimits({
       quizzesToday: 0,
       filesUploaded: 0,
-      quizzesPerDayLimit: 15,
+      quizzesPerDayLimit: 10,
       fileUploadsLimit: 10,
       maxFileSizeLimit: 10,
       canUploadMore: true,

@@ -61,7 +61,7 @@ const Dashboard = ({
 
         // Fetch user's quizzes and results
         const [quizzes, results] = await Promise.all([
-          getQuizzesByUserId(user.id),
+          getQuizzesByUserId(user.id, user.isPremium),
           getResultsByUserId(user.id),
         ]);
 

@@ -201,8 +201,8 @@ def generate_quiz_logic(content: bytes, filename: str, question_count: int = 10,
 
     cleaned_text = "\n".join(filtered_lines).strip()
     final_text = cleaned_text if len(cleaned_text) > 500 else extracted_text
-    if len(final_text) > 12000:
-        final_text = final_text[:12000] + "..."
+    if len(final_text) > 50000:
+        final_text = final_text[:50000] + "..."
 
     prompt = build_prompt(final_text, question_count, difficulty)
     response_text, provider_used = generate_with_fallback(prompt)

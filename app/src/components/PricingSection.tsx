@@ -13,9 +13,7 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { subscriptionPlans } from "@/services/paymongo";
 import { toast } from "sonner";
 
-const PricingSection: React.FC<{ onNavigate?: (view: string) => void }> = ({
-  onNavigate,
-}) => {
+const PricingSection: React.FC = () => {
   const { isPremium, upgradeToPremium, isLoading } = useSubscription();
 
   const handleUpgrade = async () => {

@@ -130,7 +130,7 @@ export default function Pricing({ onNavigate }: PricingProps) {
       )}
 
       {/* Pricing content */}
-      <PricingSection onNavigate={onNavigate} />
+      <PricingSection />
     </div>
   );
 }

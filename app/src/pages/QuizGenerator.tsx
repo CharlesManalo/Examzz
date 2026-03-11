@@ -10,6 +10,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Brain, BookOpen, Trophy, Target } from "lucide-react";
 import QuizUpload from "@/components/QuizUpload";
+import type { Quiz, Question, View } from "@/types";
 
 const QuizGenerator = () => {
   const [activeTab, setActiveTab] = useState("generate");
@@ -78,7 +79,14 @@ const QuizGenerator = () => {
         </TabsList>
 
         <TabsContent value="generate" className="space-y-6">
-          <QuizUpload />
+          <QuizUpload
+            onStartQuiz={function (quiz: Quiz, questions: Question[]): void {
+              throw new Error("Function not implemented.");
+            }}
+            onNavigate={function (view: View): void {
+              throw new Error("Function not implemented.");
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="practice" className="space-y-6">

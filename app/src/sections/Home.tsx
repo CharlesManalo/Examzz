@@ -1,6 +1,7 @@
 import type { View } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Upload,
   FileText,
@@ -12,6 +13,8 @@ import {
   Sparkles,
   Zap,
   Target,
+  Crown,
+  Check,
 } from "lucide-react";
 
 interface HomeProps {
@@ -72,8 +75,25 @@ const Home = ({ onNavigate, isAuthenticated }: HomeProps) => {
     { value: "4.9", label: "User Rating" },
   ];
 
+  const freeFeatures = [
+    "10 quizzes per day",
+    "Up to 10 file uploads",
+    "Max 10MB file size",
+    "Ad-supported",
+  ];
+
+  const supporterFeatures = [
+    "Unlimited quizzes forever",
+    "Unlimited file uploads",
+    "Max 50MB file size",
+    "Zero ads — permanently",
+    "Priority support",
+    "Supporter badge",
+  ];
+
   return (
     <div className="flex flex-col">
+      {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-b from-violet-50 via-white to-white py-20 lg:py-32">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]"></div>
         <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-violet-400 opacity-20 blur-[100px]"></div>
@@ -188,6 +208,7 @@ const Home = ({ onNavigate, isAuthenticated }: HomeProps) => {
         </div>
       </section>
 
+      {/* Stats */}
       <section className="py-12 border-y bg-muted/50">
         <div className="container">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -205,6 +226,7 @@ const Home = ({ onNavigate, isAuthenticated }: HomeProps) => {
         </div>
       </section>
 
+      {/* Features */}
       <section className="py-20 lg:py-32">
         <div className="container">
           <div className="text-center max-w-2xl mx-auto mb-16">
@@ -243,6 +265,7 @@ const Home = ({ onNavigate, isAuthenticated }: HomeProps) => {
         </div>
       </section>
 
+      {/* How it works */}
       <section className="py-20 lg:py-32 bg-gradient-to-b from-violet-50 to-white">
         <div className="container">
           <div className="text-center max-w-2xl mx-auto mb-16">
@@ -274,6 +297,114 @@ const Home = ({ onNavigate, isAuthenticated }: HomeProps) => {
         </div>
       </section>
 
+      {/* ── Pricing section ── */}
+      <section className="py-20 lg:py-32">
+        <div className="container">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <Badge className="mb-4 bg-violet-100 text-violet-700 border-0">
+              Pricing
+            </Badge>
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+              Simple,{" "}
+              <span className="bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+                honest pricing
+              </span>
+            </h2>
+            <p className="text-muted-foreground text-lg">
+              One plan. One payment. Lifetime access. No subscriptions, no
+              renewals.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            {/* Free */}
+            <Card className="border border-gray-200">
+              <CardContent className="p-8">
+                <div className="mb-6">
+                  <p className="text-lg font-semibold text-gray-700 mb-1">
+                    Free
+                  </p>
+                  <div className="flex items-end gap-1">
+                    <span className="text-4xl font-bold text-gray-900">₱0</span>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">Always free</p>
+                </div>
+                <ul className="space-y-3 mb-8">
+                  {freeFeatures.map((f, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center gap-2 text-sm text-gray-600"
+                    >
+                      <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() =>
+                    onNavigate(isAuthenticated ? "dashboard" : "register")
+                  }
+                >
+                  {isAuthenticated ? "Your current plan" : "Get started free"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Supporter */}
+            <Card className="border-2 border-violet-500 shadow-lg shadow-violet-100 relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <Badge className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white border-0 px-3">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  Best Value
+                </Badge>
+              </div>
+              <CardContent className="p-8 pt-10">
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Crown className="w-5 h-5 text-violet-600" />
+                    <p className="text-lg font-semibold text-violet-700">
+                      Supporter
+                    </p>
+                  </div>
+                  <div className="flex items-end gap-1">
+                    <span className="text-4xl font-bold text-gray-900">
+                      ₱100
+                    </span>
+                  </div>
+                  <p className="text-sm text-violet-500 font-medium mt-1">
+                    One-time · Lifetime access
+                  </p>
+                </div>
+                <ul className="space-y-3 mb-8">
+                  {supporterFeatures.map((f, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center gap-2 text-sm text-gray-700"
+                    >
+                      <Check className="w-4 h-4 text-violet-500 flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+                  onClick={() => onNavigate("pricing")}
+                >
+                  <Crown className="w-4 h-4 mr-2" />
+                  Become a Supporter — ₱100
+                </Button>
+                <p className="text-xs text-center text-gray-400 mt-3">
+                  🔒 GCash · Maya · QR Ph · GrabPay
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
       <section className="py-20 lg:py-32">
         <div className="container">
           <div className="relative rounded-3xl bg-gradient-to-br from-violet-600 to-indigo-600 p-8 lg:p-16 overflow-hidden">
@@ -294,7 +425,7 @@ const Home = ({ onNavigate, isAuthenticated }: HomeProps) => {
               </h2>
               <p className="text-violet-100 text-lg mb-8">
                 Join thousands of students who are already studying smarter with
-                Examzz.
+                EXAMZZ.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -307,6 +438,15 @@ const Home = ({ onNavigate, isAuthenticated }: HomeProps) => {
                 >
                   {isAuthenticated ? "Upload Documents" : "Get Started Free"}
                   <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => onNavigate("pricing")}
+                  className="border-white text-white hover:bg-white/10"
+                >
+                  <Crown className="w-4 h-4 mr-2" />
+                  View Pricing
                 </Button>
               </div>
             </div>
