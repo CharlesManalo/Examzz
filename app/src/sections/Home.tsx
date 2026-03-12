@@ -76,7 +76,7 @@ const Home = ({ onNavigate, isAuthenticated }: HomeProps) => {
   ];
 
   const freeFeatures = [
-    "10 quizzes per day",
+    "15 quizzes per day",
     "Up to 10 file uploads",
     "Max 10MB file size",
     "Ad-supported",

@@ -13,12 +13,19 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { subscriptionPlans } from "@/services/paymongo";
 import { toast } from "sonner";
 
-const PricingSection: React.FC = () => {
+const PricingSection: React.FC<{
+  onNavigate?: (view: string) => void;
+  onUpgrade?: () => void;
+}> = ({ onNavigate, onUpgrade }) => {
   const { isPremium, upgradeToPremium, isLoading } = useSubscription();
 
   const handleUpgrade = async () => {
     try {
-      await upgradeToPremium();
+      if (onUpgrade) {
+        onUpgrade();
+      } else {
+        await upgradeToPremium();
+      }
     } catch (error) {
       toast.error("Failed to start payment. Please try again.");
     }
@@ -144,7 +151,7 @@ const PricingSection: React.FC = () => {
       {/* Trust note */}
       <div className="text-center mt-10 space-y-1">
         <p className="text-sm text-gray-400">
-          🔒 Secure payment via PayMongo · GCash, Maya, Cards accepted
+          🔒 Secure payment via PayMongo · GCash · Maya · QR Ph · GrabPay
         </p>
         <p className="text-xs text-gray-400">
           Pay once. Use forever. No hidden charges.

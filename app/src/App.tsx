@@ -74,8 +74,17 @@ function App() {
       }
     });
 
+    // Listen for PayMongo payment success — reload user to get isPremium = true
+    const onPaymentSuccess = () => {
+      getCurrentUser().then((user) => {
+        if (user) setCurrentUserState({ ...user });
+      });
+    };
+    window.addEventListener("paymongo:payment_success", onPaymentSuccess);
+
     return () => {
       if (unsubscribe) unsubscribe();
+      window.removeEventListener("paymongo:payment_success", onPaymentSuccess);
     };
   }, []);
 

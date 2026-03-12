@@ -77,7 +77,7 @@ class PayMongoService {
       };
     }
     return {
-      quizzesPerDay: 10,
+      quizzesPerDay: 15,
       fileUploads: 10,
       maxFileSize: 10,
       noAds: false,
@@ -97,14 +97,14 @@ export const subscriptionPlans: SubscriptionPlan[] = [
     interval: "month",
     stripePriceId: "",
     features: [
-      "10 quizzes per day",
+      "15 quizzes per day",
       "Up to 10 file uploads",
       "Max 10MB file size",
       "Ad-supported",
       "Basic analytics",
     ],
     limits: {
-      quizzesPerDay: 10,
+      quizzesPerDay: 15,
       fileUploads: 10,
       maxFileSize: 10,
       features: ["basic-quizzes", "ads-supported"],

@@ -277,39 +277,6 @@ def supabase_request(method: str, path: str, body: dict = None):
         raise
 
 
-def create_paymongo_link(user_id: str, user_email: str) -> dict:
-    payload = json.dumps({
-        "data": {
-            "attributes": {
-                "amount": SUPPORTER_AMOUNT,
-                "currency": "PHP",
-                "description": "EXAMZZ Supporter — Lifetime Premium Access",
-                "remarks": f"user_id:{user_id}",
-                "payment_method_types": ["gcash", "paymaya", "qrph", "grab_pay"],
-                "metadata": {
-                    "user_id": user_id,
-                    "user_email": user_email,
-                    "plan": "supporter",
-                },
-            }
-        }
-    }).encode()
-
-    req = urllib.request.Request(
-        "https://api.paymongo.com/v1/links",
-        data=payload,
-        headers={"Authorization": paymongo_auth_header(), "Content-Type": "application/json"},
-        method="POST"
-    )
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        data = json.loads(resp.read().decode())
-        link = data["data"]
-        return {
-            "link_id": link["id"],
-            "checkout_url": link["attributes"]["checkout_url"],
-            "reference_number": link["attributes"]["reference_number"],
-        }
-
 
 def verify_webhook_signature(body: bytes, sig_header: str) -> bool:
     if not PAYMONGO_WEBHOOK_SECRET:
@@ -321,6 +288,19 @@ def verify_webhook_signature(body: bytes, sig_header: str) -> bool:
         return False
 
 
+def find_user_by_email(email: str):
+    """Look up user_id from email in Supabase users table."""
+    try:
+        import urllib.parse
+        encoded_email = urllib.parse.quote(email)
+        result = supabase_request("GET", f"/users?email=eq.{encoded_email}&select=id")
+        if result and len(result) > 0:
+            return result[0]["id"]
+    except Exception as e:
+        logger.error(f"find_user_by_email failed: {e}")
+    return None
+
+
 def mark_user_premium(user_id: str, payment_id: str, link_id: str):
     supabase_request("PATCH", f"/users?id=eq.{user_id}", {
         "is_premium": True,
@@ -328,15 +308,18 @@ def mark_user_premium(user_id: str, payment_id: str, link_id: str):
         "subscription_status": "active",
         "subscription_id": payment_id,
     })
-    supabase_request("POST", "/payments", {
-        "user_id": user_id,
-        "paymongo_payment_id": payment_id,
-        "paymongo_link_id": link_id,
-        "amount": SUPPORTER_AMOUNT,
-        "currency": "PHP",
-        "status": "paid",
-        "paid_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-    })
+    try:
+        supabase_request("POST", "/payments", {
+            "user_id": user_id,
+            "paymongo_payment_id": payment_id,
+            "paymongo_link_id": link_id,
+            "amount": SUPPORTER_AMOUNT,
+            "currency": "PHP",
+            "status": "paid",
+            "paid_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        })
+    except Exception as e:
+        logger.warning(f"Payment record insert failed (non-fatal): {e}")
     logger.info(f"User {user_id} upgraded to Supporter")
 
 
@@ -376,17 +359,17 @@ class handler(BaseHTTPRequestHandler):
             self._json_response(200, {"status": "healthy", "providers_configured": available, "version": "1.0.0"})
 
         elif path == "/api/paymongo/verify":
-            # Poll payment status — called from success page
-            link_id = query.get("link_id", [None])[0]
+            # Check if currently logged-in user is now premium (poll after redirect)
             user_id = query.get("user_id", [None])[0]
-            if not link_id or not user_id:
-                self._json_response(400, {"detail": "link_id and user_id required"})
+            if not user_id:
+                self._json_response(400, {"detail": "user_id required"})
                 return
             try:
-                result = check_payment_link(link_id)
-                if result["paid"] and result["payment_id"]:
-                    mark_user_premium(user_id, result["payment_id"], link_id)
-                self._json_response(200, result)
+                result = supabase_request("GET", f"/users?id=eq.{user_id}&select=is_premium,plan_type")
+                if result and result[0].get("is_premium"):
+                    self._json_response(200, {"paid": True})
+                else:
+                    self._json_response(200, {"paid": False})
             except Exception as e:
                 logger.error(f"Verify failed: {e}")
                 self._json_response(500, {"detail": str(e)})
@@ -400,32 +383,10 @@ class handler(BaseHTTPRequestHandler):
             self._handle_generate()
         elif path == "/api/quiz/test-gemini":
             self._handle_test()
-        elif path == "/api/paymongo/create-link":
-            self._handle_create_link()
         elif path == "/api/paymongo/webhook":
             self._handle_webhook()
         else:
             self._json_response(404, {"detail": "Not found"})
-
-    def _handle_create_link(self):
-        try:
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = json.loads(self.rfile.read(content_length).decode())
-            user_id = body.get("userId")
-            user_email = body.get("userEmail")
-
-            if not user_id or not user_email:
-                self._json_response(400, {"detail": "userId and userEmail required"})
-                return
-            if not PAYMONGO_SECRET_KEY:
-                self._json_response(500, {"detail": "PayMongo not configured on server"})
-                return
-
-            result = create_paymongo_link(user_id, user_email)
-            self._json_response(200, result)
-        except Exception as e:
-            logger.error(f"Create link failed: {e}")
-            self._json_response(500, {"detail": str(e)})
 
     def _handle_webhook(self):
         try:
@@ -444,24 +405,35 @@ class handler(BaseHTTPRequestHandler):
             if event_type in ("link.payment.paid", "payment.paid"):
                 attrs = event["data"]["attributes"]
                 payment_data = attrs.get("data", {})
-                metadata = (
-                    payment_data.get("attributes", {}).get("metadata", {})
-                    or attrs.get("metadata", {})
-                )
+                payment_attrs = payment_data.get("attributes", {})
+
+                payment_id = payment_data.get("id", event["data"]["id"])
+                link_id = attrs.get("id", "")
+                user_id = None
+
+                # Primary: metadata user_id (Links flow — most reliable)
+                metadata = payment_attrs.get("metadata", {}) or attrs.get("metadata", {})
                 user_id = metadata.get("user_id")
 
                 if not user_id:
-                    remarks = payment_data.get("attributes", {}).get("remarks", "")
+                    remarks = payment_attrs.get("remarks", "")
                     if "user_id:" in remarks:
                         user_id = remarks.split("user_id:")[1].strip()
 
+                # Fallback: match by billing email (Pages flow)
+                if not user_id:
+                    billing = payment_attrs.get("billing", {})
+                    payer_email = billing.get("email", "")
+                    if payer_email:
+                        user_id = find_user_by_email(payer_email)
+                        if user_id:
+                            logger.info(f"Matched user {user_id} by email {payer_email}")
+
                 if user_id:
-                    payment_id = payment_data.get("id", event["data"]["id"])
-                    link_id = attrs.get("id", "")
                     mark_user_premium(user_id, payment_id, link_id)
                     self._json_response(200, {"received": True, "upgraded": True})
                 else:
-                    logger.warning("Webhook: no user_id found in metadata")
+                    logger.warning(f"Webhook: could not identify user")
                     self._json_response(200, {"received": True, "upgraded": False})
             else:
                 self._json_response(200, {"received": True})

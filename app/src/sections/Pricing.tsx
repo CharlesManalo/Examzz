@@ -1,9 +1,24 @@
 import { useEffect, useState } from "react";
-import { Crown, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
+import {
+  Crown,
+  ArrowLeft,
+  CheckCircle,
+  Loader2,
+  Mail,
+  ExternalLink,
+  XCircle,
+  Clock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import PricingSection from "@/components/PricingSection";
-import { paymongoService } from "@/services/paymongo";
-import { getCurrentUser } from "@/services/auth";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import type { View } from "@/types";
 
 interface PricingProps {
@@ -11,73 +26,48 @@ interface PricingProps {
 }
 
 export default function Pricing({ onNavigate }: PricingProps) {
-  const [verifying, setVerifying] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    user,
+    isPolling,
+    pollTimeRemaining,
+    cancelPolling,
+    showEmailConfirm,
+    confirmAndProceed,
+    cancelEmailConfirm,
+    isPremium,
+  } = useSubscription();
 
-  // Check if returning from PayMongo checkout
+  const [pollExpired, setPollExpired] = useState(false);
+
+  // Detect when 5-min window expires
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const isSuccess = params.get("success") === "true";
-    const linkId = sessionStorage.getItem("paymongo_link_id");
-    const userId = sessionStorage.getItem("paymongo_user_id");
-
-    if (isSuccess && linkId && userId) {
-      verifyPayment(linkId, userId);
+    if (
+      !isPolling &&
+      sessionStorage.getItem("paymongo_poll_expired") === "true"
+    ) {
+      setPollExpired(true);
+      sessionStorage.removeItem("paymongo_poll_expired");
     }
+  }, [isPolling]);
+
+  // Listen for successful payment event
+  useEffect(() => {
+    const onSuccess = () => {
+      // page will re-render via isPremium becoming true — nothing extra needed
+    };
+    window.addEventListener("paymongo:payment_success", onSuccess);
+    return () =>
+      window.removeEventListener("paymongo:payment_success", onSuccess);
   }, []);
 
-  const verifyPayment = async (linkId: string, userId: string) => {
-    setVerifying(true);
-    setError(null);
-    try {
-      // Poll up to 5 times with 2s delay (PayMongo webhooks can have slight delay)
-      let result = null;
-      for (let i = 0; i < 5; i++) {
-        result = await paymongoService.verifyPayment(linkId, userId);
-        if (result.paid) break;
-        await new Promise((r) => setTimeout(r, 2000));
-      }
-
-      if (result?.paid) {
-        // Clear stored link info
-        sessionStorage.removeItem("paymongo_link_id");
-        sessionStorage.removeItem("paymongo_user_id");
-        setPaymentSuccess(true);
-        // Clean URL
-        window.history.replaceState({}, "", window.location.pathname);
-      } else {
-        setError(
-          "Payment not confirmed yet. If you paid, please wait a moment and refresh.",
-        );
-      }
-    } catch (err) {
-      setError(
-        "Could not verify payment. Please contact support if you were charged.",
-      );
-    } finally {
-      setVerifying(false);
-    }
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  // Payment success screen
-  if (verifying) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-violet-50 to-white flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-violet-600 animate-spin mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-800">
-            Verifying your payment...
-          </h2>
-          <p className="text-gray-500 mt-2">
-            Please wait, this only takes a moment.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (paymentSuccess) {
+  // ── Success screen ────────────────────────────────────────────────────────
+  if (isPremium) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-violet-50 to-white flex items-center justify-center px-4">
         <div className="text-center max-w-md">
@@ -88,8 +78,7 @@ export default function Pricing({ onNavigate }: PricingProps) {
             Welcome, Supporter! 🎉
           </h1>
           <p className="text-gray-500 mb-2">
-            Your payment was successful. You now have lifetime access to all
-            premium features.
+            You now have lifetime access to all premium features.
           </p>
           <p className="text-sm text-gray-400 mb-8">
             No ads. Unlimited quizzes. Forever.
@@ -108,7 +97,121 @@ export default function Pricing({ onNavigate }: PricingProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-white">
-      {/* Back button */}
+      {/* ── Email confirmation dialog ─────────────────────────────────────── */}
+      <Dialog
+        open={showEmailConfirm}
+        onOpenChange={(open) => {
+          if (!open) cancelEmailConfirm();
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-violet-600" />
+              Confirm your email
+            </DialogTitle>
+            <DialogDescription>
+              Make sure you pay using this email address so we can automatically
+              activate your Supporter access.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="my-2 rounded-xl bg-violet-50 border border-violet-200 px-4 py-3 text-center">
+            <p className="text-xs text-violet-500 mb-1">Logged in as</p>
+            <p className="text-lg font-semibold text-violet-800 break-all">
+              {user?.email}
+            </p>
+          </div>
+
+          <p className="text-sm text-gray-500 text-center">
+            PayMongo will ask for your email during checkout.{" "}
+            <span className="font-medium text-gray-700">
+              Enter the exact email above
+            </span>{" "}
+            so your account is upgraded automatically.
+          </p>
+
+          <div className="flex flex-col gap-2 mt-2">
+            <Button
+              className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+              onClick={confirmAndProceed}
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Yes, proceed to payment
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={cancelEmailConfirm}
+            >
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Polling status banner ─────────────────────────────────────────── */}
+      {isPolling && (
+        <div className="bg-violet-600 text-white px-4 py-3">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium">Waiting for your payment…</p>
+                <p className="text-xs text-violet-200">
+                  Complete your payment in the PayMongo tab. This page will
+                  update automatically.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-1 text-sm font-mono bg-violet-700 rounded-lg px-3 py-1">
+                <Clock className="w-3.5 h-3.5" />
+                {formatTime(pollTimeRemaining)}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={cancelPolling}
+                className="text-violet-200 hover:text-white hover:bg-violet-700 h-8 px-2"
+              >
+                <XCircle className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Payment expired banner ────────────────────────────────────────── */}
+      {pollExpired && !isPolling && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-3">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-700">
+                Payment window expired. If you completed your payment, please{" "}
+                <button
+                  className="underline font-medium"
+                  onClick={() => window.location.reload()}
+                >
+                  refresh the page
+                </button>
+                . Otherwise try again below.
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setPollExpired(false)}
+              className="text-red-400 hover:text-red-600 h-8 px-2 flex-shrink-0"
+            >
+              <XCircle className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Back button ───────────────────────────────────────────────────── */}
       <div className="max-w-5xl mx-auto px-4 pt-6">
         <Button
           variant="ghost"
@@ -120,16 +223,7 @@ export default function Pricing({ onNavigate }: PricingProps) {
         </Button>
       </div>
 
-      {/* Error banner */}
-      {error && (
-        <div className="max-w-md mx-auto mt-4 px-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
-            {error}
-          </div>
-        </div>
-      )}
-
-      {/* Pricing content */}
+      {/* ── Pricing content ───────────────────────────────────────────────── */}
       <PricingSection />
     </div>
   );
