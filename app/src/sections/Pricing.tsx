@@ -1,13 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   Crown,
   ArrowLeft,
   CheckCircle,
-  Loader2,
   Mail,
   ExternalLink,
-  XCircle,
-  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +15,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import PricingSection from "@/components/PricingSection";
+import PaymentModal from "@/components/PaymentModal";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import type { View } from "@/types";
 
@@ -28,27 +26,15 @@ interface PricingProps {
 export default function Pricing({ onNavigate }: PricingProps) {
   const {
     user,
-    isPolling,
-    pollTimeRemaining,
-    cancelPolling,
     showEmailConfirm,
     confirmAndProceed,
     cancelEmailConfirm,
+    showPaymentModal,
+    paymentComplete,
+    setShowPaymentModal,
+    setPaymentComplete,
     isPremium,
   } = useSubscription();
-
-  const [pollExpired, setPollExpired] = useState(false);
-
-  // Detect when 5-min window expires
-  useEffect(() => {
-    if (
-      !isPolling &&
-      sessionStorage.getItem("paymongo_poll_expired") === "true"
-    ) {
-      setPollExpired(true);
-      sessionStorage.removeItem("paymongo_poll_expired");
-    }
-  }, [isPolling]);
 
   // Listen for successful payment event
   useEffect(() => {
@@ -59,12 +45,6 @@ export default function Pricing({ onNavigate }: PricingProps) {
     return () =>
       window.removeEventListener("paymongo:payment_success", onSuccess);
   }, []);
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
 
   // ── Success screen ────────────────────────────────────────────────────────
   if (isPremium) {
@@ -150,76 +130,27 @@ export default function Pricing({ onNavigate }: PricingProps) {
         </DialogContent>
       </Dialog>
 
-      {/* ── Polling status banner ─────────────────────────────────────────── */}
-      {isPolling && (
-        <div className="bg-violet-600 text-white px-4 py-3">
-          <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium">Waiting for your payment…</p>
-                <p className="text-xs text-violet-200">
-                  Complete your payment in the PayMongo tab. This page will
-                  update automatically.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <div className="flex items-center gap-1 text-sm font-mono bg-violet-700 rounded-lg px-3 py-1">
-                <Clock className="w-3.5 h-3.5" />
-                {formatTime(pollTimeRemaining)}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={cancelPolling}
-                className="text-violet-200 hover:text-white hover:bg-violet-700 h-8 px-2"
-              >
-                <XCircle className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Payment expired banner ────────────────────────────────────────── */}
-      {pollExpired && !isPolling && (
-        <div className="bg-red-50 border-b border-red-200 px-4 py-3">
-          <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-              <p className="text-sm text-red-700">
-                Payment window expired. If you completed your payment, please{" "}
-                <button
-                  className="underline font-medium"
-                  onClick={() => window.location.reload()}
-                >
-                  refresh the page
-                </button>
-                . Otherwise try again below.
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setPollExpired(false)}
-              className="text-red-400 hover:text-red-600 h-8 px-2 flex-shrink-0"
-            >
-              <XCircle className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* ── Payment Modal ────────────────────────────────────────────────────── */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => {
+          setShowPaymentModal(false);
+          if (paymentComplete) {
+            setPaymentComplete(false);
+          }
+        }}
+        paymentComplete={paymentComplete}
+      />
 
       {/* ── Back button ───────────────────────────────────────────────────── */}
       <div className="max-w-5xl mx-auto px-4 pt-6">
         <Button
           variant="ghost"
           onClick={() => onNavigate("dashboard")}
-          className="text-gray-500 hover:text-gray-700"
+          className="mb-6"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
+          Back to Dashboard
         </Button>
       </div>
 

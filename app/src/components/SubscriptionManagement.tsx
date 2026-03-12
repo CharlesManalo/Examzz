@@ -8,19 +8,11 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Calendar, CreditCard, Settings, Trash2 } from "lucide-react";
+import { Crown, Check } from "lucide-react";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { toast } from "sonner";
 
 const SubscriptionManagement: React.FC = () => {
-  const {
-    user,
-    subscription,
-    isPremium,
-    manageSubscription,
-    cancelSubscription,
-    isLoading,
-  } = useSubscription();
+  const { user, isPremium, upgradeToPremium, isLoading } = useSubscription();
 
   if (!user) {
     return (
@@ -32,164 +24,87 @@ const SubscriptionManagement: React.FC = () => {
     );
   }
 
-  const handleManageSubscription = async () => {
-    try {
-      await manageSubscription();
-    } catch (error) {
-      toast.error("Failed to open subscription management");
-    }
-  };
-
-  const handleCancelSubscription = async () => {
-    if (!subscription) return;
-
-    if (
-      window.confirm(
-        "Are you sure you want to cancel your subscription? You will continue to have access until the end of your billing period.",
-      )
-    ) {
-      try {
-        await cancelSubscription();
-        toast.success(
-          "Subscription will be canceled at the end of your billing period",
-        );
-      } catch (error) {
-        toast.error("Failed to cancel subscription");
-      }
-    }
-  };
-
-  if (isPremium && subscription) {
+  if (isPremium) {
     return (
       <div className="space-y-6">
-        {/* Current Subscription Status */}
-        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+        {/* Supporter Status */}
+        <Card className="bg-gradient-to-r from-violet-50 to-indigo-50 border-violet-200">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Crown className="w-5 h-5 text-primary" />
-                <CardTitle>Premium Plan</CardTitle>
-                <Badge variant="default" className="bg-green-500">
-                  {subscription.status
-                    ? subscription.status.charAt(0).toUpperCase() +
-                      subscription.status.slice(1)
-                    : "Unknown"}
+                <Crown className="w-5 h-5 text-violet-600" />
+                <CardTitle>Supporter Plan</CardTitle>
+                <Badge className="bg-violet-600 text-white border-0">
+                  Lifetime
                 </Badge>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleManageSubscription}
-                disabled={isLoading}
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                Manage
-              </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="flex items-center space-x-2">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">
-                  {subscription.cancelAtPeriodEnd ? "Cancels on" : "Renews on"}:{" "}
-                  {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <CreditCard className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">
-                  ID:{" "}
-                  {subscription.stripeSubscriptionId
-                    ? subscription.stripeSubscriptionId.slice(-8)
-                    : "N/A"}
-                </span>
-              </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              You made a one-time payment for lifetime access. No renewals, no
+              expiry — ever.
+            </p>
+            <div className="bg-white rounded-lg border border-violet-100 px-4 py-3 text-sm text-violet-700 font-medium">
+              ✅ Lifetime access active
             </div>
 
-            {subscription.cancelAtPeriodEnd && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                <p className="text-sm text-orange-800">
-                  Your subscription will cancel on{" "}
-                  {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
-                  . You can reactivate anytime before then.
-                </p>
+            {/* Personal Message from Developer */}
+            <div className="bg-gradient-to-r from-violet-100 to-indigo-100 border border-violet-200 rounded-lg p-4 mt-4">
+              <div className="flex items-start space-x-3">
+                <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xs font-bold">CM</span>
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-violet-900 mb-1">
+                    Message by the Developer (Charles Manalo)
+                  </h4>
+                  <p className="text-sm text-violet-800 leading-relaxed">
+                    Hello {user?.nickname || "Supporter"}! My name is Charles
+                    Manalo, founder/developer of
+                    <span
+                      className="font-bold"
+                      style={{ fontFamily: "Blanka, sans-serif" }}
+                    >
+                      {" "}
+                      Examzz
+                    </span>
+                    . This subscription will help me add more features and keep
+                    the platform running. Thank you sincerely for your support!
+                  </p>
+                  <p className="text-xs text-violet-600 mt-2 italic">
+                    — Charles Manalo
+                  </p>
+                </div>
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
 
         {/* Premium Features */}
         <Card>
           <CardHeader>
-            <CardTitle>Your Premium Benefits</CardTitle>
+            <CardTitle>Your Supporter Benefits</CardTitle>
             <CardDescription>
-              You're enjoying all these premium features:
+              Everything included in your lifetime plan:
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">Unlimited quizzes</span>
+            <div className="grid md:grid-cols-2 gap-3">
+              {[
+                "Unlimited quizzes forever",
+                "No advertisements",
+                "Unlimited file uploads",
+                "Priority support",
+                "50MB max file size",
+                "Supporter badge",
+                "Supports Charles Manalo (Developer)",
+              ].map((feature) => (
+                <div key={feature} className="flex items-center space-x-2">
+                  <Check className="w-4 h-4 text-violet-500 flex-shrink-0" />
+                  <span className="text-sm">{feature}</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">No advertisements</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">Advanced analytics</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">Priority support</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">15 file uploads</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">50MB max file size</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Danger Zone */}
-        <Card className="border-red-200">
-          <CardHeader>
-            <CardTitle className="text-red-600">Danger Zone</CardTitle>
-            <CardDescription>
-              Actions that will affect your subscription
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">Cancel Subscription</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Cancel your subscription and lose access to premium features
-                  </p>
-                </div>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleCancelSubscription}
-                  disabled={isLoading || subscription.cancelAtPeriodEnd}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  {subscription.cancelAtPeriodEnd
-                    ? "Already Canceling"
-                    : "Cancel"}
-                </Button>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -212,8 +127,8 @@ const SubscriptionManagement: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <CardDescription>
-            You're currently on the free plan. Upgrade to Premium to unlock more
-            features.
+            You're currently on the free plan. Become a Supporter for lifetime
+            access to all features.
           </CardDescription>
 
           <div className="space-y-2">
@@ -232,40 +147,34 @@ const SubscriptionManagement: React.FC = () => {
           </div>
 
           <Button
-            className="w-full bg-orange-500 hover:bg-orange-600"
-            onClick={() => (window.location.href = "/pricing")}
+            className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+            onClick={upgradeToPremium}
+            disabled={isLoading}
           >
-            Upgrade to Premium
+            <Crown className="w-4 h-4 mr-2" />
+            Become a Supporter — ₱100 lifetime
           </Button>
         </CardContent>
       </Card>
 
-      {/* Available Features */}
       <Card>
         <CardHeader>
-          <CardTitle>Available Features</CardTitle>
-          <CardDescription>
-            Features included in your free plan:
-          </CardDescription>
+          <CardTitle>Free Plan Features</CardTitle>
+          <CardDescription>What's included in your free plan:</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span className="text-sm">15 quizzes per day</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span className="text-sm">Basic quiz creation</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span className="text-sm">File upload support</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span className="text-sm">Basic analytics</span>
-            </div>
+            {[
+              "15 quizzes per day",
+              "Basic quiz creation",
+              "File upload support",
+              "Basic analytics",
+            ].map((feature) => (
+              <div key={feature} className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                <span className="text-sm">{feature}</span>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

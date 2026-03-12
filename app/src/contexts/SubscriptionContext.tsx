@@ -29,6 +29,10 @@ interface SubscriptionContextType {
   pendingCheckoutUrl: string | null;
   confirmAndProceed: () => void;
   cancelEmailConfirm: () => void;
+  showPaymentModal: boolean;
+  paymentComplete: boolean;
+  setShowPaymentModal: (show: boolean) => void;
+  setPaymentComplete: (complete: boolean) => void;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(
@@ -62,6 +66,8 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
   const [pendingCheckoutUrl, setPendingCheckoutUrl] = useState<string | null>(
     null,
   );
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentComplete, setPaymentComplete] = useState(false);
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
@@ -177,6 +183,8 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
           stopPolling();
           sessionStorage.removeItem("paymongo_user_id");
           sessionStorage.removeItem("paymongo_poll_expired");
+          setPaymentComplete(true);
+          setShowPaymentModal(true);
           window.dispatchEvent(new CustomEvent("paymongo:payment_success"));
         }
       } catch (err) {
@@ -198,6 +206,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
   const confirmAndProceed = () => {
     if (!pendingCheckoutUrl || !user) return;
     setShowEmailConfirm(false);
+    setShowPaymentModal(true);
     startPolling(user.id);
     // Open in new tab so our app stays alive and polling continues
     window.open(pendingCheckoutUrl, "_blank");
@@ -229,6 +238,10 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
     pendingCheckoutUrl,
     confirmAndProceed,
     cancelEmailConfirm,
+    showPaymentModal,
+    paymentComplete,
+    setShowPaymentModal,
+    setPaymentComplete,
   };
 
   return (
